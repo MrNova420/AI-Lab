@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""
+AI Intent Parser - Extracts user intent from AI's natural response
+SMART MODE: Checks if apps exist before deciding to open app vs website
+"""
+
+import re
+import json
+
+def parse_ai_intent(user_message, ai_response, commander=None):
+    """
+    Parse what the user wants from their message and AI's understanding
+    SMART: Checks if apps are installed, falls back to website if not
+    Returns list of tool calls to execute
+    """
+    user_lower = user_message.lower()
+    ai_lower = ai_response.lower() if ai_response else ""
+    
+    tools = []
+    
+    # OPEN APP DETECTION WITH SMART FALLBACK
+    open_keywords = ['open', 'launch', 'start', 'run']
+    app_keywords = {
+        'steam': {'app': 'steam', 'url': 'https://store.steampowered.com'},
+        'discord': {'app': 'Discord', 'url': 'https://discord.com'},
+        'chrome': {'app': 'chrome', 'url': None},  # Browser only
+        'firefox': {'app': 'firefox', 'url': None},
+        'notepad': {'app': 'notepad', 'url': None},
+        'calculator': {'app': 'calc', 'url': None},
+        'calc': {'app': 'calc', 'url': None},
+        'paint': {'app': 'mspaint', 'url': None},
+        'explorer': {'app': 'explorer', 'url': None},
+        'cmd': {'app': 'cmd', 'url': None},
+        'powershell': {'app': 'powershell', 'url': None},
+        'code': {'app': 'code', 'url': 'https://code.visualstudio.com'},
+        'vscode': {'app': 'code', 'url': 'https://code.visualstudio.com'},
+        'spotify': {'app': 'spotify', 'url': 'https://open.spotify.com'},
+        'obs': {'app': 'obs64', 'url': 'https://obsproject.com'},
+        'vlc': {'app': 'vlc', 'url': 'https://www.videolan.org'},
+        'youtube': {'app': None, 'url': 'https://youtube.com'},  # Web only
+        'gmail': {'app': None, 'url': 'https://gmail.com'},
+        'reddit': {'app': None, 'url': 'https://reddit.com'},
+        'github': {'app': None, 'url': 'https://github.com'},
+    }
+    
+    # Check if user wants to open something
+    if any(kw in user_lower for kw in open_keywords):
+        # Check if explicitly wants website
+        website_keywords = ['website', 'site', 'web', 'browser', 'online', '.com', 'http']
+        force_website = any(kw in user_lower for kw in website_keywords)
+        
+        # Find which app/service user wants
+        for service_name, service_info in app_keywords.items():
+            if service_name in user_lower:
+                app_cmd = service_info.get('app')
+                website_url = service_info.get('url')
+                
+                # If explicitly wants website, open URL
+                if force_website and website_url:
+                    tools.append({
+                        'tool': 'open_url',
+                        'params': {'url': website_url}
+                    })
+                    break
+                
+                # If no desktop app available, must use website
+                if not app_cmd and website_url:
+                    tools.append({
+                        'tool': 'open_url',
+                        'params': {'url': website_url}
+                    })
+                    break
+                
+                # SMART MODE: Check if app is installed
+                if app_cmd and commander:
+                    check_result = commander.check_app_exists(app_cmd)
+                    app_exists = check_result.get('exists', False)
+                    
+                    if app_exists:
+                        # App is installed - open it!
+                        tools.append({
+                            'tool': 'open_app',
+                            'params': {'app': app_cmd}
+                        })
+                    elif website_url:
+                        # App NOT installed - open website instead
+                        tools.append({
+                            'tool': 'open_url',
+                            'params': {'url': website_url}
+                        })
+                    else:
+                        # No app, no website - try to open anyway
+                        tools.append({
+                            'tool': 'open_app',
+                            'params': {'app': app_cmd}
+                        })
+                elif app_cmd:
+                    # No commander provided - assume app exists
+                    tools.append({
+                        'tool': 'open_app',
+                        'params': {'app': app_cmd}
+                    })
+                
+                break
+                        'params': {'app': app_cmd}
+                    })
+                    break
+        else:
+            # User wants website - check which one
+            if 'steam' in user_lower:
+                tools.append({
+                    'tool': 'open_url',
+                    'params': {'url': 'https://store.steampowered.com'}
+                })
+            elif 'discord' in user_lower:
+                tools.append({
+                    'tool': 'open_url',
+                    'params': {'url': 'https://discord.com/app'}
+                })
+            elif 'github' in user_lower:
+                tools.append({
+                    'tool': 'open_url',
+                    'params': {'url': 'https://github.com'}
+                })
+    
+    # SCREENSHOT DETECTION
+    screenshot_keywords = ['screenshot', 'screen shot', 'capture', 'take a picture', 'snap']
+    if any(kw in user_lower for kw in screenshot_keywords):
+        tools.append({
+            'tool': 'screenshot',
+            'params': {}
+        })
+    
+    # TYPE TEXT DETECTION
+    type_keywords = ['type', 'write']
+    if any(kw in user_lower for kw in type_keywords):
+        # Extract text to type (between quotes or after "type")
+        match = re.search(r'["\'](.+?)["\']', user_message)
+        if match:
+            tools.append({
+                'tool': 'keyboard_type',
+                'params': {'text': match.group(1)}
+            })
+        else:
+            # Try to extract after "type"
+            match = re.search(r'type\s+(.+)', user_lower)
+            if match:
+                text = match.group(1).strip()
+                # Remove common ending words
+                for ending in ['please', 'for me', 'now']:
+                    if text.endswith(ending):
+                        text = text[:-(len(ending)+1)].strip()
+                tools.append({
+                    'tool': 'keyboard_type',
+                    'params': {'text': text}
+                })
+    
+    # MOUSE MOVE DETECTION
+    if 'move mouse' in user_lower or 'move cursor' in user_lower:
+        x, y = 'center', 'center'
+        if 'top' in user_lower:
+            y = 'top'
+        if 'bottom' in user_lower:
+            y = 'bottom'
+        if 'left' in user_lower:
+            x = 'left'
+        if 'right' in user_lower:
+            x = 'right'
+        if 'center' in user_lower or 'middle' in user_lower:
+            x, y = 'center', 'center'
+        
+        tools.append({
+            'tool': 'mouse_move',
+            'params': {'x': x, 'y': y}
+        })
+    
+    # MOUSE CLICK DETECTION
+    if 'click' in user_lower:
+        button = 'left'
+        if 'right' in user_lower:
+            button = 'right'
+        elif 'middle' in user_lower:
+            button = 'middle'
+        
+        clicks = 2 if 'double' in user_lower else 1
+        
+        tools.append({
+            'tool': 'mouse_click',
+            'params': {'button': button, 'clicks': clicks}
+        })
+    
+    # KEY PRESS DETECTION
+    key_keywords = ['press enter', 'press return', 'hit enter', 'press escape', 'press esc', 'press tab']
+    for keyword in key_keywords:
+        if keyword in user_lower:
+            if 'enter' in keyword or 'return' in keyword:
+                tools.append({'tool': 'keyboard_press', 'params': {'key': 'enter'}})
+            elif 'escape' in keyword or 'esc' in keyword:
+                tools.append({'tool': 'keyboard_press', 'params': {'key': 'escape'}})
+            elif 'tab' in keyword:
+                tools.append({'tool': 'keyboard_press', 'params': {'key': 'tab'}})
+            break
+    
+    # CLIPBOARD DETECTION
+    if 'copy' in user_lower and not 'screenshot' in user_lower:
+        match = re.search(r'copy\s+["\'](.+?)["\']', user_message)
+        if match:
+            tools.append({
+                'tool': 'clipboard_copy',
+                'params': {'text': match.group(1)}
+            })
+    
+    return tools
+
+def test_parser():
+    """Test the parser"""
+    test_cases = [
+        ("open steam", "Opening Steam for you!"),
+        ("open steam website", "Opening Steam website"),
+        ("take a screenshot", "Taking a screenshot"),
+        ("type hello world", "Typing that for you"),
+        ("move mouse to top right", "Moving mouse"),
+        ("click", "Clicking"),
+        ("open discord", "Opening Discord"),
+    ]
+    
+    for user_msg, ai_resp in test_cases:
+        tools = parse_ai_intent(user_msg, ai_resp)
+        print(f"\nUser: {user_msg}")
+        print(f"Tools: {json.dumps(tools, indent=2)}")
+
+if __name__ == "__main__":
+    test_parser()

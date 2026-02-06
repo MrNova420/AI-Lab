@@ -1,0 +1,10 @@
+requests
+prompt_toolkit
+pyaudio
+sounddevice
+numpy
+scipy
+filelock
+pytest
+requests-mock
+pytest-cov

@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Logs
+logs/
+*.log
+nohup.out
+
+# Models (too large for git)
+models/*
+!models/.gitkeep
+
+# Exports
+exports/
+memory/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+app/node_modules/
+app/renderer/node_modules/
+
+# Build outputs
+app/dist/
+app/out/
+
+# Environment
+.env
+*.env
+
+# Testing
+.pytest_cache/
+*.coverage
+
+# Temporary files
+*.tmp
+*.temp
