@@ -67,18 +67,57 @@ class ComprehensiveStatusMonitor:
         }
     
     def _get_hardware_status(self) -> Dict[str, Any]:
-        """CPU, GPU, Memory, Disk - detailed"""
+        """CPU, GPU, Memory, Disk - detailed with WSL detection"""
+        
+        # Detect if running in WSL
+        is_wsl = False
+        wsl_version = None
+        try:
+            with open('/proc/version', 'r') as f:
+                version_info = f.read().lower()
+                if 'microsoft' in version_info or 'wsl' in version_info:
+                    is_wsl = True
+                    if 'wsl2' in version_info:
+                        wsl_version = 2
+                    else:
+                        wsl_version = 1
+        except:
+            pass
         
         # CPU - detailed
         cpu_freq = psutil.cpu_freq()
         cpu_stats = psutil.cpu_stats()
         cpu_times = psutil.cpu_times()
         
+        # Get WSL allocated cores
+        allocated_cores = psutil.cpu_count(logical=True)
+        physical_cores = psutil.cpu_count(logical=False)
+        
+        # Try to get Windows host total cores if WSL
+        host_cores = None
+        host_cores_physical = None
+        if is_wsl:
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ['cmd.exe', '/c', 'wmic cpu get NumberOfCores,NumberOfLogicalProcessors /format:list'],
+                    capture_output=True, text=True, timeout=3
+                )
+                if result.returncode == 0:
+                    lines = result.stdout.strip().split('\n')
+                    for line in lines:
+                        if 'NumberOfLogicalProcessors=' in line:
+                            host_cores = int(line.split('=')[1].strip())
+                        if 'NumberOfCores=' in line:
+                            host_cores_physical = int(line.split('=')[1].strip())
+            except:
+                pass
+        
         cpu = {
             "usage_percent": psutil.cpu_percent(interval=0.1),
             "per_core": psutil.cpu_percent(interval=0.1, percpu=True),
-            "count_logical": psutil.cpu_count(logical=True),
-            "count_physical": psutil.cpu_count(logical=False),
+            "count_logical": allocated_cores,
+            "count_physical": physical_cores,
             "frequency_mhz": cpu_freq.current if cpu_freq else 0,
             "frequency_min_mhz": cpu_freq.min if cpu_freq else 0,
             "frequency_max_mhz": cpu_freq.max if cpu_freq else 0,
@@ -86,7 +125,13 @@ class ComprehensiveStatusMonitor:
             "interrupts": cpu_stats.interrupts if cpu_stats else 0,
             "user_time": cpu_times.user if cpu_times else 0,
             "system_time": cpu_times.system if cpu_times else 0,
-            "idle_time": cpu_times.idle if cpu_times else 0
+            "idle_time": cpu_times.idle if cpu_times else 0,
+            # WSL info
+            "is_wsl": is_wsl,
+            "wsl_version": wsl_version,
+            "wsl_allocated_cores": allocated_cores if is_wsl else None,
+            "host_total_cores": host_cores,
+            "host_physical_cores": host_cores_physical
         }
         
         # Temperature
@@ -106,20 +151,45 @@ class ComprehensiveStatusMonitor:
         # GPU - ultra detailed
         gpu = self._get_detailed_gpu()
         
-        # Memory - detailed
+        # Memory - detailed with WSL awareness
         mem = psutil.virtual_memory()
         swap = psutil.swap_memory()
+        
+        # Get WSL allocated memory
+        allocated_memory_gb = mem.total / (1024**3)
+        
+        # Try to get Windows host total memory if WSL
+        host_total_memory_gb = None
+        if is_wsl:
+            try:
+                result = subprocess.run(
+                    ['cmd.exe', '/c', 'wmic computersystem get TotalPhysicalMemory /format:list'],
+                    capture_output=True, text=True, timeout=3
+                )
+                if result.returncode == 0:
+                    lines = result.stdout.strip().split('\n')
+                    for line in lines:
+                        if 'TotalPhysicalMemory=' in line:
+                            bytes_val = int(line.split('=')[1].strip())
+                            host_total_memory_gb = bytes_val / (1024**3)
+                            break
+            except:
+                pass
         
         memory = {
             "used_gb": mem.used / (1024**3),
             "available_gb": mem.available / (1024**3),
-            "total_gb": mem.total / (1024**3),
+            "total_gb": allocated_memory_gb,
             "percent": mem.percent,
             "cached_gb": mem.cached / (1024**3) if hasattr(mem, 'cached') else 0,
             "buffers_gb": mem.buffers / (1024**3) if hasattr(mem, 'buffers') else 0,
             "swap_used_gb": swap.used / (1024**3),
             "swap_total_gb": swap.total / (1024**3),
-            "swap_percent": swap.percent
+            "swap_percent": swap.percent,
+            # WSL info
+            "is_wsl": is_wsl,
+            "wsl_allocated_gb": allocated_memory_gb if is_wsl else None,
+            "host_total_gb": host_total_memory_gb
         }
         
         # Disk - detailed
@@ -141,7 +211,12 @@ class ComprehensiveStatusMonitor:
             "cpu": cpu,
             "gpu": gpu,
             "memory": memory,
-            "storage": storage
+            "storage": storage,
+            "environment": {
+                "is_wsl": is_wsl,
+                "wsl_version": wsl_version,
+                "platform": "WSL" if is_wsl else "Native Linux"
+            }
         }
     
     def _get_detailed_gpu(self) -> Dict[str, Any]:
