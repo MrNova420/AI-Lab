@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Zap, Cpu, HardDrive, Activity, Archive, MessageSquare, Power, Shield } from 'lucide-react';
+import { Settings, Zap, Cpu, HardDrive, Activity, Archive, MessageSquare, Power, Shield, Clock } from 'lucide-react';
 import '../styles/Dashboard.css';
 
 function Dashboard() {
