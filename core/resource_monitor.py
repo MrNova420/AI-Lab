@@ -22,6 +22,18 @@ class ResourceMonitor:
     
     def __init__(self):
         self.gpu_available = GPU_AVAILABLE
+        self.current_device = 'cpu'
+        self.cpu_threads = psutil.cpu_count()
+        self.memory_limit_gb = 8.0
+        
+        # Usage limiters
+        self.usage_limiter_enabled = False
+        self.safety_buffer_enabled = True
+        self.max_gpu_usage_percent = 100
+        self.max_cpu_usage_percent = 100
+        self.gpu_safety_buffer = 10
+        self.cpu_safety_buffer = 5
+        
         print("📊 Resource Monitor initialized")
         if self.gpu_available:
             print("   ✅ GPU monitoring enabled")
