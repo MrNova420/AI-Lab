@@ -7,7 +7,6 @@ function Chat() {
   const [currentResponse, setCurrentResponse] = useState('');
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
-  const [resources, setResources] = useState({cpu: {}, gpu: {}, memory: {}});
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -18,50 +17,7 @@ function Chat() {
     scrollToBottom();
   }, [messages, currentResponse]);
 
-  useEffect(() => {
-    // Update resources every 5 seconds (not 1 second - too aggressive)
-    const loadResourcesNow = async () => {
-      try {
-        const response = await fetch('http://localhost:5174/api/resources/stats');
-        const data = await response.json();
-        setResources(data);
-      } catch (err) {
-        // Silent fail - don't spam console
-      }
-    };
-    
-    loadResourcesNow(); // Load immediately
-    const interval = setInterval(loadResourcesNow, 5000); // Every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // Load settings every 10 seconds (don't reload driver constantly)
-    const loadSettingsNow = async () => {
-      try {
-        const response = await fetch('http://localhost:5174/api/resources/settings');
-        const data = await response.json();
-        setCurrentDevice(data.device || 'cpu');
-        setCurrentMode(data.mode || 'normal');
-      } catch (err) {
-        // Silent fail
-      }
-    };
-    
-    loadSettingsNow();
-    const interval = setInterval(loadSettingsNow, 10000); // Every 10 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadResources = async () => {
-    try {
-      const response = await fetch('http://localhost:5174/api/resources/stats');
-      const data = await response.json();
-      setResources(data);
-    } catch (err) {
-      // Silent fail
-    }
-  };
+  // REMOVED ALL STATUS POLLING - NO MORE BACKGROUND REQUESTS
 
   useEffect(() => {
     // Listen for streaming tokens
