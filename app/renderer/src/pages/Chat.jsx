@@ -99,7 +99,15 @@ function Chat() {
         }
       }
       
-      setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
+      // Add assistant message with mode indicators
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: fullResponse,
+        modes: {
+          commander: commanderMode,
+          webSearch: webSearchMode
+        }
+      }]);
       setCurrentResponse('');
     } catch (error) {
       console.error('Chat error:', error);
