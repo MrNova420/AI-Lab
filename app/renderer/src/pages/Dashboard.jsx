@@ -313,8 +313,8 @@ function Dashboard() {
               <span>
                 {settings.device === 'gpu' ? '🎮' : '🖥️'} {settings.device?.toUpperCase()} Usage Limit
               </span>
-              <span style={{color: '#4a9eff', fontWeight: 'bold'}}>
-                {settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}%
+              <span style={{color: settings.device === 'gpu' ? '#00ff88' : '#4a9eff', fontWeight: 'bold'}}>
+                {settings.device === 'gpu' ? (settings.gpu_usage_percent || 90) : (settings.cpu_usage_percent || 95)}%
               </span>
             </h4>
             <input
@@ -322,11 +322,11 @@ function Dashboard() {
               min="0"
               max="100"
               step="1"
-              value={settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}
+              value={settings.device === 'gpu' ? (settings.gpu_usage_percent || 90) : (settings.cpu_usage_percent || 95)}
               onChange={(e) => {
                 const value = parseInt(e.target.value);
                 const key = settings.device === 'gpu' ? 'gpu_usage_percent' : 'cpu_usage_percent';
-                console.log(`Slider changed: ${key} = ${value}`);
+                console.log(`${settings.device.toUpperCase()} Usage: ${value}%`);
                 setSettings(prev => ({...prev, [key]: value}));
                 updateSetting(key, value);
               }}
@@ -336,7 +336,7 @@ function Dashboard() {
                 height: '8px',
                 borderRadius: '4px',
                 background: settings.usage_limiter_enabled 
-                  ? `linear-gradient(to right, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} 0%, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} ${settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}%, #2a2a40 ${settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}%, #2a2a40 100%)`
+                  ? `linear-gradient(to right, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} 0%, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} ${settings.device === 'gpu' ? (settings.gpu_usage_percent || 90) : (settings.cpu_usage_percent || 95)}%, #2a2a40 ${settings.device === 'gpu' ? (settings.gpu_usage_percent || 90) : (settings.cpu_usage_percent || 95)}%, #2a2a40 100%)`
                   : '#2a2a40',
                 outline: 'none',
                 cursor: settings.usage_limiter_enabled ? 'pointer' : 'not-allowed',
