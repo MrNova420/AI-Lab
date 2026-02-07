@@ -15,10 +15,25 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   
+  // Load config on mount and poll for updates
   useEffect(() => {
-    if (window.electron) {
-      window.electron.project.getConfig().then(setConfig);
-    }
+    const loadConfig = async () => {
+      try {
+        const response = await fetch('http://localhost:5174/api/project/config');
+        const data = await response.json();
+        setConfig(data);
+      } catch (error) {
+        // Silent - config will retry
+      }
+    };
+    
+    // Load immediately
+    loadConfig();
+    
+    // Poll every 5 seconds to catch model changes
+    const interval = setInterval(loadConfig, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const navItems = [
@@ -35,7 +50,7 @@ function App() {
       <div className="app-container">
         <aside className="sidebar">
           <div className="sidebar-header">
-            <h1 className="logo">⚡ NovaForge</h1>
+            <h1 className="logo">⚡ AI-Lab</h1>
           </div>
           <nav className="nav-menu">
             {navItems.map(item => (

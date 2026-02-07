@@ -46,11 +46,11 @@ function Chat({ messages, setMessages, input, setInput }) {
       const isElectron = window.electron?.chat?.send;
       
       if (isElectron) {
-        console.log('Using Electron IPC bridge...');
+        // Electron IPC mode
         fullResponse = await window.electron.chat.send(messageText, history);
         
       } else {
-        console.log('Using HTTP API (browser mode)...');
+        // Browser mode - HTTP API
         
         // Use HTTP API for browser
         const response = await fetch('http://localhost:5174/api/chat', {
@@ -91,7 +91,7 @@ function Chat({ messages, setMessages, input, setInput }) {
                 throw new Error(data.message);
               }
             } catch (e) {
-              console.warn('Parse error:', e.message);
+              // Silent - ignore parse errors
             }
           }
         }

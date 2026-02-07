@@ -10,6 +10,8 @@ function Dashboard() {
     memory_limit: 8,
     max_threads: 8,
     total_memory_gb: 16,
+    context_size: 4096,
+    max_tokens: 0,
     // NEW: Usage controls
     gpu_usage_percent: 100,
     cpu_usage_percent: 100,
@@ -152,6 +154,43 @@ function Dashboard() {
     }
   };
 
+  const saveAllSettings = async () => {
+    try {
+      console.log('💾 Saving all settings...');
+      
+      const payload = {
+        cpu_threads: parseInt(settings.cpu_threads),
+        memory_limit: parseFloat(settings.memory_limit),
+        context_size: parseInt(settings.context_size ?? 4096),
+        max_tokens: parseInt(settings.max_tokens ?? 0),
+        gpu_usage_percent: parseInt(settings.gpu_usage_percent),
+        cpu_usage_percent: parseInt(settings.cpu_usage_percent),
+        usage_limiter_enabled: settings.usage_limiter_enabled,
+        safety_buffer_enabled: settings.safety_buffer_enabled
+      };
+      
+      console.log('Sending payload:', payload);
+      
+      const response = await fetch('http://localhost:5174/api/resources/configure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await response.json();
+      console.log('Response:', result);
+      
+      if (result.success) {
+        alert('✅ All settings saved successfully!');
+      } else {
+        alert('❌ Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert(`❌ Error: ${error.message}`);
+    }
+  };
+
   const toggleSession = (sessionId) => {
     setExpandedSession(expandedSession === sessionId ? null : sessionId);
   };
@@ -219,10 +258,27 @@ function Dashboard() {
 
         {/* Performance Controls */}
         <div className="card">
-          <h3 style={{marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-            <Settings size={20} />
-            Performance Controls
-          </h3>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+            <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <Settings size={20} />
+              Performance Settings
+            </h3>
+            <button 
+              onClick={saveAllSettings}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#00ff88',
+                color: '#000',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              💾 Save All Settings
+            </button>
+          </div>
 
           {/* Device Selection */}
           <div style={{ 
@@ -445,109 +501,213 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* CPU Threads */}
+          {/* Performance Sliders - 2x2 Grid */}
           <div style={{ 
-            marginBottom: '20px',
-            padding: '15px',
-            backgroundColor: '#1a1a2e',
-            borderRadius: '8px'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '12px',
+            marginBottom: '20px'
           }}>
-            <h4 style={{ 
-              fontSize: '14px', 
-              marginBottom: '12px',
-              color: '#888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+            {/* CPU Threads */}
+            <div style={{ 
+              padding: '15px',
+              backgroundColor: '#1a1a2e',
+              borderRadius: '8px'
             }}>
-              <span>🔧 CPU Threads</span>
-              <span style={{color: '#4a9eff', fontWeight: 'bold'}}>{settings.cpu_threads || 4}</span>
-            </h4>
-            <input
-              type="range"
-              min="1"
-              max={settings.max_threads || 5}
-              step="1"
-              value={settings.cpu_threads || 4}
-              onChange={(e) => {
-                const value = parseInt(e.target.value);
-                console.log(`CPU Threads: ${value}`);
-                setSettings(prev => ({...prev, cpu_threads: value}));
-                updateSetting('cpu_threads', value);
-              }}
-              style={{
-                width: '100%',
-                height: '8px',
-                borderRadius: '4px',
-                background: `linear-gradient(to right, #4a9eff 0%, #4a9eff ${((settings.cpu_threads || 4) / (settings.max_threads || 5)) * 100}%, #2a2a40 ${((settings.cpu_threads || 4) / (settings.max_threads || 5)) * 100}%, #2a2a40 100%)`,
-                outline: 'none',
-                cursor: 'pointer',
-                WebkitAppearance: 'none',
-                appearance: 'none'
-              }}
-            />
-            <div style={{
-              marginTop: '8px',
-              fontSize: '11px',
-              color: '#666',
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}>
-              <span>1</span>
-              <span>{settings.max_threads || 5}</span>
+              <h4 style={{ 
+                fontSize: '14px', 
+                marginBottom: '12px',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>🔧 CPU Threads</span>
+                <span style={{color: '#4a9eff', fontWeight: 'bold'}}>{settings.cpu_threads || 4}</span>
+              </h4>
+              <input
+                type="range"
+                min="1"
+                max={settings.max_threads || 8}
+                step="1"
+                value={settings.cpu_threads || 4}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setSettings(prev => ({...prev, cpu_threads: value}));
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: `linear-gradient(to right, #4a9eff 0%, #6bb8ff ${((settings.cpu_threads || 4) / (settings.max_threads || 8)) * 100}%, #2a2a40 ${((settings.cpu_threads || 4) / (settings.max_threads || 8)) * 100}%, #2a2a40 100%)`,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  WebkitAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: '#666',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span>1</span>
+                <span>{settings.max_threads || 8}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Memory Limit */}
-          <div style={{ 
-            marginBottom: '20px',
-            padding: '15px',
-            backgroundColor: '#1a1a2e',
-            borderRadius: '8px'
-          }}>
-            <h4 style={{ 
-              fontSize: '14px', 
-              marginBottom: '12px',
-              color: '#888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+            {/* Memory Limit */}
+            <div style={{ 
+              padding: '15px',
+              backgroundColor: '#1a1a2e',
+              borderRadius: '8px'
             }}>
-              <span>💾 Memory Limit</span>
-              <span style={{color: '#ff6b6b', fontWeight: 'bold'}}>{settings.memory_limit || 8} GB</span>
-            </h4>
-            <input
-              type="range"
-              min="1"
-              max={Math.floor(settings.total_memory_gb) || 10}
-              step="0.5"
-              value={settings.memory_limit || 8}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value);
-                console.log(`Memory: ${value} GB`);
-                setSettings(prev => ({...prev, memory_limit: value}));
-                updateSetting('memory_limit', value);
-              }}
-              style={{
-                width: '100%',
-                height: '8px',
-                borderRadius: '4px',
-                background: `linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${((settings.memory_limit || 8) / (settings.total_memory_gb || 10)) * 100}%, #2a2a40 ${((settings.memory_limit || 8) / (settings.total_memory_gb || 10)) * 100}%, #2a2a40 100%)`,
-                outline: 'none',
-                cursor: 'pointer',
-                WebkitAppearance: 'none',
-                appearance: 'none'
-              }}
-            />
-            <div style={{
-              marginTop: '8px',
-              fontSize: '11px',
-              color: '#666',
-              display: 'flex',
-              justifyContent: 'space-between'
+              <h4 style={{ 
+                fontSize: '14px', 
+                marginBottom: '12px',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>💾 Memory Limit</span>
+                <span style={{color: '#ff6b6b', fontWeight: 'bold'}}>{settings.memory_limit || 8} GB</span>
+              </h4>
+              <input
+                type="range"
+                min="1"
+                max={Math.floor(settings.total_memory_gb) || 16}
+                step="0.5"
+                value={settings.memory_limit || 8}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setSettings(prev => ({...prev, memory_limit: value}));
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: `linear-gradient(to right, #ff6b6b 0%, #ffdd57 ${((settings.memory_limit || 8) / (settings.total_memory_gb || 16)) * 100}%, #2a2a40 ${((settings.memory_limit || 8) / (settings.total_memory_gb || 16)) * 100}%, #2a2a40 100%)`,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  WebkitAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: '#666',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span>1 GB</span>
+                <span>{settings.total_memory_gb?.toFixed(1) || 16} GB</span>
+              </div>
+            </div>
+
+            {/* Context Size */}
+            <div style={{ 
+              padding: '15px',
+              backgroundColor: '#1a1a2e',
+              borderRadius: '8px'
             }}>
-              <span>1 GB</span>
-              <span>{settings.total_memory_gb?.toFixed(1) || 10} GB</span>
+              <h4 style={{ 
+                fontSize: '14px', 
+                marginBottom: '12px',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>📝 Context Size</span>
+                <span style={{color: '#a855f7', fontWeight: 'bold'}}>{settings.context_size || 2048}</span>
+              </h4>
+              <input
+                type="range"
+                min="512"
+                max="8192"
+                step="512"
+                value={settings.context_size || 2048}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setSettings(prev => ({...prev, context_size: value}));
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: `linear-gradient(to right, #a855f7 0%, #c084fc ${((settings.context_size || 2048) - 512) / (8192 - 512) * 100}%, #2a2a40 ${((settings.context_size || 2048) - 512) / (8192 - 512) * 100}%, #2a2a40 100%)`,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  WebkitAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: '#666',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span>512</span>
+                <span>8192</span>
+              </div>
+            </div>
+
+            {/* Max Tokens */}
+            <div style={{ 
+              padding: '15px',
+              backgroundColor: '#1a1a2e',
+              borderRadius: '8px'
+            }}>
+              <h4 style={{ 
+                fontSize: '14px', 
+                marginBottom: '12px',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>✨ Max Tokens</span>
+                <span style={{color: '#ec4899', fontWeight: 'bold'}}>
+                  {settings.max_tokens === 0 ? '∞' : settings.max_tokens}
+                </span>
+              </h4>
+              <input
+                type="range"
+                min="0"
+                max="4096"
+                step="256"
+                value={settings.max_tokens ?? 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setSettings(prev => ({...prev, max_tokens: value}));
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: `linear-gradient(to right, #ec4899 0%, #f472b6 ${((settings.max_tokens ?? 0) / 4096) * 100}%, #2a2a40 ${((settings.max_tokens ?? 0) / 4096) * 100}%, #2a2a40 100%)`,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  WebkitAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: '#666',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span>0 (Unlimited)</span>
+                <span>4096</span>
+              </div>
             </div>
           </div>
         </div>

@@ -134,9 +134,13 @@ class PerformanceController:
     
     def __init__(self):
         self.current_device = 'cpu'  # 'cpu' or 'gpu'
-        self.cpu_threads = psutil.cpu_count()
+        self.cpu_threads = 4  # Default: 4 (user adjustable)
         self.max_memory_gb = 8
         self.temperature_limit = 85
+        
+        # Performance controls - User adjustable via Dashboard
+        self.context_size = 4096  # Default: balanced (512-8192 range)
+        self.max_tokens = 0  # Default: unlimited (0-4096 range)
         
         # Usage limiters
         self.usage_limiter_enabled = False
@@ -146,9 +150,40 @@ class PerformanceController:
         self.gpu_safety_buffer = 10
         self.cpu_safety_buffer = 5
         
+        # Load settings from disk
+        self._load_settings_from_disk()
+        
         print("🎛️ Performance Controller initialized")
         print(f"   Device: {self.current_device.upper()}")
         print(f"   CPU Threads: {self.cpu_threads}")
+        print(f"   Context Size: {self.context_size}")
+        print(f"   Max Tokens: {self.max_tokens}")
+    
+    def _load_settings_from_disk(self):
+        """Load settings from project config on startup"""
+        try:
+            from pathlib import Path
+            project_config_path = Path(__file__).parent.parent / "projects" / "default" / "project.json"
+            
+            if project_config_path.exists():
+                import json
+                with open(project_config_path, 'r') as f:
+                    config = json.load(f)
+                
+                # Load saved settings
+                self.cpu_threads = config.get('num_threads', 4)
+                self.max_memory_gb = config.get('memory_limit_gb', 8)
+                self.context_size = config.get('context_size', 4096)
+                self.max_tokens = config.get('max_tokens', 0)
+                self.max_gpu_usage_percent = config.get('gpu_usage_percent', 100)
+                self.max_cpu_usage_percent = config.get('cpu_usage_percent', 100)
+                self.usage_limiter_enabled = config.get('usage_limiter_enabled', False)
+                self.safety_buffer_enabled = config.get('safety_buffer_enabled', True)
+                
+                print("   📂 Loaded settings from project.json")
+            
+        except Exception as e:
+            print(f"   ⚠️  Could not load settings from disk: {e}")
     
     def switch_device(self, device: str) -> Dict:
         """Switch between CPU and GPU"""
@@ -230,6 +265,12 @@ class PerformanceController:
             'use_gpu': self.current_device == 'gpu',
             'num_gpu': 1 if self.current_device == 'gpu' else 0,
             'num_threads': 8,
+            
+            # Performance controls - NEW
+            'context_size': getattr(self, 'context_size', 2048),
+            'max_tokens': getattr(self, 'max_tokens', 0),
+            
+            # Usage controls
             'max_gpu_usage_percent': self.max_gpu_usage_percent,
             'max_cpu_usage_percent': self.max_cpu_usage_percent,
             'gpu_usage_percent': self.max_gpu_usage_percent,

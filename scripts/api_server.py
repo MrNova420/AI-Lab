@@ -140,7 +140,8 @@ class APIHandler(BaseHTTPRequestHandler):
             # Config is a dict
             config_dict = {
                 'project_name': config.get('project_name', 'default'),
-                'active_model': config.get('active_model_tag', 'No model selected'),
+                'active_model_tag': config.get('active_model_tag', 'No model selected'),
+                'active_model': config.get('active_model_tag', 'No model selected'),  # Alias
                 'system_prompt': config.get('system_prompt', '')
             }
             
@@ -237,6 +238,13 @@ class APIHandler(BaseHTTPRequestHandler):
                 self.send_json_error("Failed to set active model")
                 return
             
+            # CRITICAL: Clear driver cache to force reload with new model
+            global _cached_driver, _cached_pm
+            _cached_driver = None
+            _cached_pm = None
+            print(f"🔄 Model switched to: {model_tag}")
+            print(f"   Driver cache cleared - will reload on next chat")
+            
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -248,8 +256,7 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_json_error(str(e))
     
     def handle_chat(self):
-        """Handle chat requests"""
-        
+        """Handle chat requests - supports normal, web, and commander modes"""
         try:
             # Read request body
             content_length = int(self.headers['Content-Length'])
@@ -258,14 +265,22 @@ class APIHandler(BaseHTTPRequestHandler):
             
             message = data.get('message', '')
             history = data.get('history', [])
+            web_mode = data.get('web_search_mode', False)
             commander_mode = data.get('commander_mode', False)
-            web_search_mode = data.get('web_search_mode', False)
             
             if not message:
                 self.send_error(400, "No message provided")
                 return
             
-            print(f"💬 Chat: {message[:50]}...")
+            # Determine mode
+            if web_mode:
+                mode = "web"
+            elif commander_mode:
+                mode = "commander"
+            else:
+                mode = "normal"
+            
+            print(f"💬 Chat [{mode}]: {message[:50]}...")
             
             # USE CACHED DRIVER - DON'T RELOAD EVERY TIME
             driver, pm = get_cached_driver()
@@ -274,28 +289,122 @@ class APIHandler(BaseHTTPRequestHandler):
                 self.send_error(500, "Driver not initialized")
                 return
             
-            # Simple generate - no extra processing
+            # Build history with current message (driver expects List[Dict])
+            chat_history = history + [{"role": "user", "content": message}]
+            
+            # Start streaming response (NO chunked encoding - just flush)
             self.send_response(200)
-            self.send_header('Content-Type', 'text/plain')
-            self.send_header('Transfer-Encoding', 'chunked')
+            self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('X-Content-Type-Options', 'nosniff')
             self.end_headers()
             
             full_response = ""
             
-            # Stream tokens directly from driver
-            for token in driver.generate(message, history, stream=True):
-                full_response += token
-                
-                # Send token as JSON line
-                chunk = json.dumps({"type": "token", "token": token}) + "\n"
+            # Handle modes
+            if mode == "web":
+                # Web mode - USE EXISTING WEB SEARCH TOOL
+                intro = "🌐 **Web Search Mode**\n\nSearching...\n\n"
+                chunk = json.dumps({"type": "token", "token": intro}) + "\n"
                 self.wfile.write(chunk.encode())
                 self.wfile.flush()
+                full_response += intro
+                
+                # Use existing web search tool
+                try:
+                    from tools.web.search import web_search
+                    search_results = web_search(message)
+                    
+                    if search_results:
+                        result_msg = f"📊 Search Results:\n\n{search_results}\n\n"
+                        chunk = json.dumps({"type": "token", "token": result_msg}) + "\n"
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                        full_response += result_msg
+                        
+                        # Give AI the search results
+                        chat_history[-1]["content"] = f"User query: {message}\n\nWeb search results:\n{search_results}\n\nProvide a helpful answer based on these results."
+                    else:
+                        error_msg = "⚠️ No search results found.\n\n"
+                        chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                        full_response += error_msg
+                        
+                except Exception as e:
+                    error_msg = f"⚠️ Web search error: {e}\n\nAnswering from knowledge...\n\n"
+                    chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
+                    self.wfile.write(chunk.encode())
+                    self.wfile.flush()
+                    full_response += error_msg
+                
+            elif mode == "commander":
+                # Commander mode - USE EXISTING SYSTEM TOOLS
+                intro = "⚡ **Commander Mode**\n\n"
+                chunk = json.dumps({"type": "token", "token": intro}) + "\n"
+                self.wfile.write(chunk.encode())
+                self.wfile.flush()
+                full_response += intro
+                
+                # Use existing system tools
+                try:
+                    from tools.system.info import get_current_time, get_current_date, get_system_info
+                    
+                    result_data = None
+                    
+                    # Detect what user wants
+                    msg_lower = message.lower()
+                    if "time" in msg_lower:
+                        result_data = get_current_time()
+                    elif "date" in msg_lower:
+                        result_data = get_current_date()
+                    elif "system" in msg_lower or "info" in msg_lower:
+                        result_data = get_system_info()
+                    
+                    if result_data and result_data.get('success'):
+                        # Show the result
+                        output_msg = f"```\n{result_data.get('message', str(result_data))}\n```\n\n"
+                        chunk = json.dumps({"type": "token", "token": output_msg}) + "\n"
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                        full_response += output_msg
+                        
+                        # Let AI explain
+                        chat_history[-1]["content"] = f"User request: {message}\n\nResult: {result_data.get('message', '')}\n\nBriefly acknowledge this."
+                    else:
+                        no_exec_msg = "⚠️ Command not recognized. Try: time, date, or system info\n\n"
+                        chunk = json.dumps({"type": "token", "token": no_exec_msg}) + "\n"
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                        full_response += no_exec_msg
+                        
+                except Exception as e:
+                    error_msg = f"⚠️ Commander error: {e}\n\n"
+                    chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
+                    self.wfile.write(chunk.encode())
+                    self.wfile.flush()
+                    full_response += error_msg
+            
+            # Stream tokens directly from driver - IMMEDIATE FLUSH
+            for token in driver.generate(chat_history, stream=True):
+                full_response += token
+                
+                # Send token as JSON line - flush immediately
+                chunk = json.dumps({"type": "token", "token": token}) + "\n"
+                try:
+                    self.wfile.write(chunk.encode())
+                    self.wfile.flush()
+                except BrokenPipeError:
+                    break
             
             # Send done
             done_chunk = json.dumps({"type": "done", "full_response": full_response}) + "\n"
-            self.wfile.write(done_chunk.encode())
-            self.wfile.flush()
+            try:
+                self.wfile.write(done_chunk.encode())
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
             
             print(f"✅ Chat complete ({len(full_response)} chars)")
             
@@ -307,286 +416,6 @@ class APIHandler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             except:
                 pass
-            
-            # If commander mode, add system prompt with tools + context
-            if commander_mode or web_search_mode:
-                import importlib.util
-                
-                # Build system prompt with AI-aware tools
-                from tools import generate_tools_description  
-                from core.ai_protocol import get_system_prompt
-                
-                tools_desc = generate_tools_description(commander_mode=commander_mode,
-                                                       web_search_mode=web_search_mode)
-                
-                # Add context summary to help AI
-                context_summary = context_mem.get_context_summary(detailed=False)
-                if context_summary != "No context yet":
-                    tools_desc += f"\n\n**🧠 Current Session Context:**\n{context_summary}\n"
-                
-                system_msg = get_system_prompt(commander_mode=commander_mode,
-                                              web_search_mode=web_search_mode,
-                                              tools_description=tools_desc)
-                
-                # Inject system prompt into history
-                if not history or history[0].get('role') != 'system':
-                    history.insert(0, {"role": "system", "content": system_msg})
-                else:
-                    history[0] = {"role": "system", "content": system_msg}
-                
-                # Load commander for tool execution
-                commander_path = PROJECT_ROOT / 'scripts' / 'commander.py'
-                spec2 = importlib.util.spec_from_file_location("commander", commander_path)
-                commander_module = importlib.util.module_from_spec(spec2)
-                spec2.loader.exec_module(commander_module)
-                Commander = commander_module.Commander
-                
-                # Load tool execution
-                commander_chat_path = PROJECT_ROOT / 'scripts' / 'ai_commander_chat.py'
-                spec = importlib.util.spec_from_file_location("ai_commander_chat", commander_chat_path)
-                ai_commander_chat = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(ai_commander_chat)
-                execute_tool_calls = ai_commander_chat.execute_tool_calls
-            else:
-                # Normal mode - no tools
-                from core.ai_protocol import get_system_prompt
-                system_msg = get_system_prompt(commander_mode=False, web_search_mode=False, tools_description="")
-                if not history or history[0].get('role') != 'system':
-                    history.insert(0, {"role": "system", "content": system_msg})
-                else:
-                    history[0]['content'] = system_msg
-            
-            # Add user message to history
-            history.append({"role": "user", "content": message})
-            
-            # Log user message to session
-            logging_system.log_message(
-                role="user",
-                content=message,
-                metadata={
-                    "commander_mode": commander_mode,
-                    "web_search_mode": web_search_mode
-                }
-            )
-            
-            # Store in memory system (use correct method)
-            memory_system.short_term.store(f"user_msg_{len(memory_system.short_term.memory)}", message)
-            
-            # Send response headers
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Cache-Control', 'no-cache')
-            self.end_headers()
-            
-            # Stream response
-            full_response = ""
-            for token in driver.generate(history, stream=True):
-                full_response += token
-                chunk = json.dumps({"type": "token", "token": token}) + "\n"
-                self.wfile.write(chunk.encode())
-                self.wfile.flush()
-            
-            # If commander/web mode enabled, parse AI's tool declarations
-            if commander_mode or web_search_mode:
-                # Use smart parser - AI decides which tools to use
-                from scripts.smart_parser import parse_tool_declarations, remove_tool_declarations
-                from tools import TOOLS
-                
-                tool_calls = parse_tool_declarations(full_response)
-                
-                if tool_calls:
-                    print(f"🔧 Executing {len(tool_calls)} tools: {[t['tool'] for t in tool_calls]}")
-                    
-                    # Analyze intent and plan execution with reasoning engine
-                    intent_analysis = reasoning.analyze_intent(message, full_response, tool_calls)
-                    print(f"🧠 Intent: {intent_analysis['user_intent']}, "
-                          f"Complexity: {intent_analysis['complexity']}, "
-                          f"Confidence: {intent_analysis.get('confidence', 1.0):.2f}")
-                    
-                    if intent_analysis.get('reasoning_trace'):
-                        for trace in intent_analysis['reasoning_trace']:
-                            print(f"   {trace}")
-                    
-                    # Plan optimal execution
-                    execution_plan = reasoning.plan_execution(tool_calls)
-                    if execution_plan['can_optimize']:
-                        print(f"⚡ Can optimize! Using {len([s for s in execution_plan['steps'] if s['action']=='use_cache'])} cached results")
-                    
-                    # Send reasoning info to UI
-                    reasoning_msg = json.dumps({
-                        "type": "reasoning",
-                        "intent": intent_analysis['user_intent'],
-                        "complexity": intent_analysis['complexity'],
-                        "confidence": intent_analysis.get('confidence', 1.0),
-                        "can_optimize": execution_plan['can_optimize'],
-                        "cached_count": len([s for s in execution_plan['steps'] if s['action']=='use_cache']),
-                        "trace": intent_analysis.get('reasoning_trace', [])
-                    }) + "\n"
-                    self.wfile.write(reasoning_msg.encode())
-                    self.wfile.flush()
-                    
-                    # Check if ANY tool requires verification (hybrid approach)
-                    needs_verification = False
-                    for call in tool_calls:
-                        tool_name = call['tool']
-                        # Find tool in registry
-                        for category, tools in TOOLS.items():
-                            if tool_name in tools:
-                                if tools[tool_name].get('requires_verification', False):
-                                    needs_verification = True
-                                    print(f"🧠 {tool_name} requires AI verification (complex tool)")
-                                    break
-                        if needs_verification:
-                            break
-                    
-                    # Execute tools (use cache when possible)
-                    if 'commander' not in locals():
-                        commander = Commander()
-                    
-                    results = []
-                    for i, step in enumerate(execution_plan['steps']):
-                        if step['action'] == 'use_cache':
-                            print(f"💾 Using cached result for: {step['tool']}")
-                            results.append({
-                                'tool': step['tool'],
-                                'result': step['result'],
-                                'cached': True,
-                                'execution_time': 0
-                            })
-                        else:
-                            import time
-                            start_time = time.time()
-                            
-                            # Execute the tool
-                            tool_result = execute_tool_calls([tool_calls[step['index']]], commander)
-                            execution_time = time.time() - start_time
-                            
-                            if tool_result:
-                                result_data = tool_result[0]
-                                result_data['cached'] = False
-                                result_data['execution_time'] = execution_time
-                                results.append(result_data)
-                                
-                                # Record for learning
-                                tool_name = result_data['tool']
-                                success = result_data['result'].get('success', False)
-                                reasoning.record_result(tool_name, success, execution_time)
-                                
-                                # Verify result
-                                verification = verifier.verify_result(tool_name, result_data['result'])
-                                if not verification['valid'] or verification['warnings']:
-                                    print(f"⚠️ Verification: Confidence {verification['confidence']:.2f}")
-                                    if verification['issues']:
-                                        print(f"   Issues: {verification['issues']}")
-                                    if verification['warnings']:
-                                        print(f"   Warnings: {verification['warnings']}")
-                                
-                                # Store in context memory
-                                context_mem.add_tool_result(
-                                    tool_name, 
-                                    tool_calls[step['index']].get('params', {}),
-                                    result_data['result']
-                                )
-                    
-                    print(f"✅ Tool execution complete: {len(results)} results")
-                    
-                    # Format results with cache indicators
-                    formatted = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛠️ Actions Taken:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    for r in results:
-                        icon = "✅" if r['result'].get('success') else "❌"
-                        tool_name = r['tool']
-                        msg = r['result'].get('message', 'Done')
-                        
-                        # Add cache indicator
-                        cache_indicator = " 💾" if r.get('cached', False) else ""
-                        
-                        # Add execution time for new executions
-                        time_info = ""
-                        if not r.get('cached', False) and r.get('execution_time', 0) > 0:
-                            time_info = f" ({r['execution_time']:.2f}s)"
-                        
-                        formatted += f"{icon} {tool_name}{cache_indicator}{time_info}: {msg}\n"
-                    formatted += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    
-                    # Send tool results
-                    tool_msg = json.dumps({
-                        "type": "tool_results", 
-                        "results": results,
-                        "formatted": formatted
-                    }) + "\n"
-                    self.wfile.write(tool_msg.encode())
-                    self.wfile.flush()
-                    
-                    # HYBRID APPROACH: Only do second pass for complex tools
-                    clean_response = remove_tool_declarations(full_response)
-                    
-                    if needs_verification:
-                        print("🧠 SMART MODE: AI will see results and correct itself")
-                        # Complex tool - AI needs to see and verify results
-                        tool_results_text = "\n\nTOOL RESULTS:\n"
-                        for r in results:
-                            tool_results_text += f"- {r['tool']}: {r['result'].get('message', str(r['result']))}\n"
-                        
-                        # Ask AI to provide final answer with tool results
-                        followup = "Based on the tool results above, provide your final accurate answer. Be concise."
-                        history.append({"role": "assistant", "content": clean_response + tool_results_text})
-                        history.append({"role": "user", "content": followup})
-                        
-                        # Get corrected response
-                        final_response = ""
-                        for token in driver.generate(history, stream=True):
-                            final_response += token
-                            chunk = json.dumps({"type": "token", "token": token}) + "\n"
-                            self.wfile.write(chunk.encode())
-                            self.wfile.flush()
-                        
-                        full_response = final_response + formatted
-                    else:
-                        print("⚡ FAST MODE: Simple tool, just appending results")
-                        # Simple tool - just append results (fast!)
-                        full_response = clean_response + formatted
-                else:
-                    # No tools - just clean the response
-                    full_response = remove_tool_declarations(full_response)
-            
-            # Store conversation turn in context
-            tool_calls = []  # Initialize for later use
-            if commander_mode or web_search_mode:
-                if 'tool_calls' in locals() and tool_calls:
-                    tools_used = [t['tool'] for t in tool_calls]
-                else:
-                    tools_used = []
-                context_mem.add_conversation_turn(message, full_response, tools_used)
-                
-                # Save session periodically
-                context_mem.save_session(session_id)
-            
-            # Log AI response to session (saves immediately!)
-            logging_system.log_message(
-                role="assistant",
-                content=full_response,
-                metadata={
-                    "commander_mode": commander_mode,
-                    "web_search_mode": web_search_mode
-                }
-            )
-            
-            # Store in memory system (use correct method)
-            memory_system.short_term.store(f"ai_msg_{len(memory_system.short_term.memory)}", full_response)
-            
-            # No need to check "every 10" - already saving immediately!
-            
-            # Send done message
-            done = json.dumps({"type": "done", "full_response": full_response}) + "\n"
-            
-            self.wfile.write(done.encode())
-            self.wfile.flush()
-            
-        except Exception as e:
-            error_msg = json.dumps({"type": "error", "message": str(e)}) + "\n"
-            self.wfile.write(error_msg.encode())
-            self.wfile.flush()
     
     def handle_commander_parse(self):
         """Parse natural language command (preview mode)"""
@@ -897,6 +726,24 @@ class APIHandler(BaseHTTPRequestHandler):
             
             results = {'success': True, 'updated': {}}
             
+            # Performance controls
+            if 'context_size' in data:
+                performance_controller.context_size = int(data['context_size'])
+                results['updated']['context_size'] = data['context_size']
+                print(f"   Context size: {data['context_size']}")
+                # Clear driver cache to apply new settings
+                global _cached_driver, _cached_pm
+                _cached_driver = None
+                _cached_pm = None
+            
+            if 'max_tokens' in data:
+                performance_controller.max_tokens = int(data['max_tokens'])
+                results['updated']['max_tokens'] = data['max_tokens']
+                print(f"   Max tokens: {data['max_tokens']}")
+                # Clear driver cache
+                _cached_driver = None
+                _cached_pm = None
+            
             if 'cpu_threads' in data:
                 result = performance_controller.set_cpu_threads(data['cpu_threads'])
                 results['updated']['cpu_threads'] = result
@@ -908,12 +755,12 @@ class APIHandler(BaseHTTPRequestHandler):
             if 'gpu_usage_percent' in data:
                 performance_controller.max_gpu_usage_percent = data['gpu_usage_percent']
                 results['updated']['gpu_usage_percent'] = data['gpu_usage_percent']
-                print(f"   Set GPU usage limit: {data['gpu_usage_percent']}%")
+                print(f"   GPU usage limit: {data['gpu_usage_percent']}%")
             
             if 'cpu_usage_percent' in data:
                 performance_controller.max_cpu_usage_percent = data['cpu_usage_percent']
                 results['updated']['cpu_usage_percent'] = data['cpu_usage_percent']
-                print(f"   Set CPU usage limit: {data['cpu_usage_percent']}%")
+                print(f"   CPU usage limit: {data['cpu_usage_percent']}%")
             
             if 'usage_limiter_enabled' in data:
                 performance_controller.usage_limiter_enabled = data['usage_limiter_enabled']
@@ -925,6 +772,10 @@ class APIHandler(BaseHTTPRequestHandler):
                 results['updated']['safety_buffer_enabled'] = data['safety_buffer_enabled']
                 print(f"   Safety buffer: {'ON' if data['safety_buffer_enabled'] else 'OFF'}")
             
+            # SAVE TO DISK - Persist settings
+            self._save_settings_to_disk()
+            print("💾 Settings saved to disk")
+            
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -934,6 +785,37 @@ class APIHandler(BaseHTTPRequestHandler):
             
         except Exception as e:
             self.send_json_error(str(e))
+    
+    def _save_settings_to_disk(self):
+        """Save performance settings to project config"""
+        try:
+            project_config_path = PROJECT_ROOT / "projects" / "default" / "project.json"
+            
+            # Read current config
+            if project_config_path.exists():
+                with open(project_config_path, 'r') as f:
+                    config = json.load(f)
+            else:
+                config = {}
+            
+            # Update performance settings
+            config['num_threads'] = performance_controller.cpu_threads
+            config['memory_limit_gb'] = performance_controller.max_memory_gb
+            config['context_size'] = performance_controller.context_size
+            config['max_tokens'] = performance_controller.max_tokens
+            config['gpu_usage_percent'] = performance_controller.max_gpu_usage_percent
+            config['cpu_usage_percent'] = performance_controller.max_cpu_usage_percent
+            config['usage_limiter_enabled'] = performance_controller.usage_limiter_enabled
+            config['safety_buffer_enabled'] = performance_controller.safety_buffer_enabled
+            
+            # Write back to disk
+            with open(project_config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            print(f"   Saved to: {project_config_path}")
+            
+        except Exception as e:
+            print(f"   ⚠️  Failed to save to disk: {e}")
     
     def log_message(self, format, *args):
         """Custom logging"""

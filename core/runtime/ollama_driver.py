@@ -47,19 +47,23 @@ class OllamaDriver(ModelDriver):
         self.timeout = 600  # 10 minutes for long generations
         
         # GPU/CPU settings
-        self.use_gpu = project_config.get('use_gpu', True)
+        self.use_gpu = project_config.get('use_gpu', False)
         self.num_gpu = project_config.get('num_gpu', 1)
-        self.num_threads = project_config.get('num_threads', 8)
+        self.num_threads = project_config.get('num_threads', 4)
+        
+        # Performance settings - User controllable via Dashboard
+        self.context_size = 4096  # Default: Good balance (user adjustable)
+        self.max_tokens = 0  # 0 = unlimited (user adjustable)
         
         # NEW: Usage percentage controls (0-100%)
         self.max_gpu_usage_percent = 100  # User-controllable
         self.max_cpu_usage_percent = 100  # User-controllable
         self.usage_limiter_enabled = False  # Toggle for usage limiter
         
-        # NEW: Safety buffer (reserves 5-10% to prevent system freeze)
-        self.safety_buffer_enabled = True
-        self.gpu_safety_buffer = 10  # Reserve 10% for system
-        self.cpu_safety_buffer = 5   # Reserve 5% for system
+        # SAFETY BUFFERS DISABLED - JAILBREAK MODE
+        self.safety_buffer_enabled = False  # DISABLED
+        self.gpu_safety_buffer = 0  # NO BUFFER
+        self.cpu_safety_buffer = 0   # NO BUFFER
         
         print(f"🔧 Ollama Driver initialized")
         print(f"   Model: {model_tag}")
@@ -88,29 +92,27 @@ class OllamaDriver(ModelDriver):
         return True
     
     def set_threads(self, num_threads: int):
-        """Set number of CPU threads"""
-        self.num_threads = max(1, min(num_threads, 32))
+        """Set number of CPU threads - NO LIMITS"""
+        self.num_threads = num_threads  # REMOVED SAFETY CAPS
         print(f"🔧 CPU Threads set to: {self.num_threads}")
         return True
     
     def set_usage_limit(self, device: str, percent: int):
         """
-        Set maximum usage percentage for GPU or CPU
+        Set maximum usage percentage for GPU or CPU - NO CAPS
         
         Args:
             device: 'gpu' or 'cpu'
-            percent: 0-100 (will be capped with safety buffer if enabled)
+            percent: ANY VALUE (safety removed)
         """
-        percent = max(0, min(100, percent))
+        # REMOVED: percent = max(0, min(100, percent))  # NO LIMITS
         
         if device == 'gpu':
             self.max_gpu_usage_percent = percent
-            actual = self._apply_safety_buffer(percent, 'gpu')
-            print(f"🎮 GPU usage limit: {percent}% (actual: {actual}% with buffer)")
+            print(f"🎮 GPU usage limit: {percent}% (NO BUFFER)")
         else:
             self.max_cpu_usage_percent = percent
-            actual = self._apply_safety_buffer(percent, 'cpu')
-            print(f"🖥️ CPU usage limit: {percent}% (actual: {actual}% with buffer)")
+            print(f"🖥️ CPU usage limit: {percent}% (NO BUFFER)")
         
         return True
     
@@ -173,35 +175,23 @@ class OllamaDriver(ModelDriver):
 
         chat_url = urljoin(self.ollama_base_url, "/api/chat")
         
-        # Build options with GPU/CPU settings and usage limits
+        # Build options - Use controller settings
         options = {
             'num_thread': self.num_threads,
             'temperature': 0.7,
+            'num_ctx': self.context_size if hasattr(self, 'context_size') else 2048,
         }
         
-        # GPU configuration with usage limits
+        # Add max_predict if set
+        if hasattr(self, 'max_tokens') and self.max_tokens > 0:
+            options['num_predict'] = self.max_tokens
+        
+        # GPU/CPU mode
         if self.use_gpu:
             options['num_gpu'] = self.num_gpu
-            
-            # Apply usage limiter if enabled
-            if self.usage_limiter_enabled:
-                actual_percent = self._apply_safety_buffer(self.max_gpu_usage_percent, 'gpu')
-                # Convert percentage to memory fraction (0.0 to 1.0)
-                options['gpu_memory_fraction'] = actual_percent / 100.0
-            
-            # Force GPU usage
             os.environ['CUDA_VISIBLE_DEVICES'] = '0'
         else:
             options['num_gpu'] = 0
-            
-            # Apply CPU usage limiter if enabled
-            if self.usage_limiter_enabled:
-                actual_percent = self._apply_safety_buffer(self.max_cpu_usage_percent, 'cpu')
-                # Adjust context size based on CPU usage limit
-                max_ctx = int(2048 * (actual_percent / 100.0))
-                options['num_ctx'] = max(512, max_ctx)
-            
-            # Force CPU only
             os.environ['CUDA_VISIBLE_DEVICES'] = ''
         
         data = {
@@ -211,14 +201,10 @@ class OllamaDriver(ModelDriver):
             "options": options
         }
         
-        print(f"🚀 Generating response...")
-        print(f"   Model: {self.model_tag}")
-        print(f"   Device: {'GPU' if self.use_gpu else 'CPU'}")
-        if self.usage_limiter_enabled:
-            device_name = 'GPU' if self.use_gpu else 'CPU'
-            percent = self.max_gpu_usage_percent if self.use_gpu else self.max_cpu_usage_percent
-            actual = self._apply_safety_buffer(percent, device_name.lower())
-            print(f"   Usage Limit: {percent}% (actual: {actual}% with buffer)")
+        # Silent mode - no spam
+        # print(f"🚀 Generating response...")
+        # print(f"   Model: {self.model_tag}")
+        # print(f"   Device: {'GPU' if self.use_gpu else 'CPU'}")
 
         try:
             response = requests.post(chat_url, json=data, stream=True, timeout=self.timeout)
