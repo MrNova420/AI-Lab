@@ -266,8 +266,28 @@ function Chat() {
                 {msg.role === 'user' ? '👤 You' : 
                   <>
                     🤖 Assistant
-                    {msg.modes?.commander && <span style={{marginLeft: '8px', color: '#ff4444', fontSize: '0.85em'}}>⚡CMD</span>}
-                    {msg.modes?.webSearch && <span style={{marginLeft: '8px', color: '#44ff44', fontSize: '0.85em'}}>🌐WEB</span>}
+                    {msg.modes?.commander && (
+                      <span style={{
+                        marginLeft: '8px', 
+                        padding: '2px 8px',
+                        backgroundColor: 'rgba(255, 68, 68, 0.2)',
+                        borderRadius: '4px',
+                        color: '#ff4444', 
+                        fontSize: '0.8em',
+                        fontWeight: 'bold'
+                      }}>⚡ CMD</span>
+                    )}
+                    {msg.modes?.webSearch && (
+                      <span style={{
+                        marginLeft: '8px',
+                        padding: '2px 8px', 
+                        backgroundColor: 'rgba(68, 255, 68, 0.2)',
+                        borderRadius: '4px',
+                        color: '#44ff44', 
+                        fontSize: '0.8em',
+                        fontWeight: 'bold'
+                      }}>🌐 WEB</span>
+                    )}
                   </>
                 }
               </span>
