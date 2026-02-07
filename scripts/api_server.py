@@ -774,9 +774,23 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_json_error(str(e))
     
     def handle_get_settings(self):
-        """Get current performance settings"""
+        """Get current performance settings including usage limits"""
         try:
+            # Get base settings from performance controller
             settings = performance_controller.get_current_settings()
+            
+            # Get driver settings if available
+            try:
+                pm = ProjectManager(str(PROJECT_ROOT))
+                project_config = pm.get_active_project_config()
+                runtime_mgr = ModelRuntimeManager(str(PROJECT_ROOT))
+                driver = runtime_mgr.get_driver(project_config)
+                
+                if hasattr(driver, 'get_settings'):
+                    driver_settings = driver.get_settings()
+                    settings.update(driver_settings)
+            except:
+                pass
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
