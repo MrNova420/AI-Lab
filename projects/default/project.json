@@ -2,7 +2,7 @@
   "project_name": "default",
   "version": "1.0",
   "created_date": "2026-02-06T03:38:47Z",
-  "active_model_tag": "openchat:7b",
+  "active_model_tag": "qwen2.5-coder:1.5b",
   "system_prompt": "You are NovaForge, a helpful AI assistant. Always strive to provide concise and accurate information.",
   "active_tools": [],
   "memory": {
