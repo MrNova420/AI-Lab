@@ -323,8 +323,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 }
             )
             
-            # Store in memory system
-            memory_system.short_term.add(f"User: {message}")
+            # Store in memory system (use correct method)
+            memory_system.short_term.store(f"user_msg_{len(memory_system.short_term.memory)}", message)
             
             # Send response headers
             self.send_response(200)
@@ -526,8 +526,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 }
             )
             
-            # Store in memory system
-            memory_system.short_term.add(f"Assistant: {full_response}")
+            # Store in memory system (use correct method)
+            memory_system.short_term.store(f"ai_msg_{len(memory_system.short_term.memory)}", full_response)
             
             # No need to check "every 10" - already saving immediately!
             
