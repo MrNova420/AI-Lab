@@ -142,26 +142,8 @@ function Chat() {
           <p className="page-description">Text conversation with AI</p>
         </div>
         
-        {/* Mode Toggles & Live Stats */}
+        {/* Mode Toggles */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {/* Live Resource Stats */}
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginRight: '10px',
-            padding: '6px 12px',
-            backgroundColor: '#1a1a2e',
-            borderRadius: '6px',
-            fontSize: '11px',
-            color: '#888'
-          }}>
-            <span>🖥️ CPU: <strong style={{color: '#4a9eff'}}>{resources.cpu?.usage_percent?.toFixed(0) || '0'}%</strong></span>
-            {resources.gpu?.available && resources.gpu?.devices?.[0] && (
-              <span>🎮 GPU: <strong style={{color: '#00ff88'}}>{resources.gpu.devices[0].usage_percent?.toFixed(0) || '0'}%</strong> <span style={{color: '#666'}}>({resources.gpu.devices[0].temperature_c}°C)</span></span>
-            )}
-            <span>💾 RAM: <strong style={{color: '#ffaa00'}}>{resources.memory?.percent?.toFixed(0) || '0'}%</strong></span>
-          </div>
-
           <button
             onClick={() => setCommanderMode(!commanderMode)}
             style={{
