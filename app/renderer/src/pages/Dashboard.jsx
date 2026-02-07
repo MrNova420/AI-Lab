@@ -132,6 +132,7 @@ function Dashboard() {
       
       console.log('Sending payload:', payload);
       
+      // Don't reload settings immediately - wait for user to finish adjusting
       const response = await fetch('http://localhost:5174/api/resources/configure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,9 +144,6 @@ function Dashboard() {
       
       if (result.success) {
         console.log(`✅ ${key} updated successfully`);
-        
-        // Reload to get actual values with buffer applied
-        setTimeout(loadResources, 500);
       } else {
         console.error('Update failed:', result);
       }

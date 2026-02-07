@@ -865,13 +865,37 @@ class APIHandler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             data = json.loads(body)
             
-            results = {}
+            print(f"🔧 Configuring resources: {data}")
+            
+            results = {'success': True, 'updated': {}}
             
             if 'cpu_threads' in data:
-                results['cpu_threads'] = performance_controller.set_cpu_threads(data['cpu_threads'])
+                result = performance_controller.set_cpu_threads(data['cpu_threads'])
+                results['updated']['cpu_threads'] = result
             
             if 'memory_limit' in data:
-                results['memory_limit'] = performance_controller.set_memory_limit(data['memory_limit'])
+                result = performance_controller.set_memory_limit(data['memory_limit'])
+                results['updated']['memory_limit'] = result
+            
+            if 'gpu_usage_percent' in data:
+                performance_controller.max_gpu_usage_percent = data['gpu_usage_percent']
+                results['updated']['gpu_usage_percent'] = data['gpu_usage_percent']
+                print(f"   Set GPU usage limit: {data['gpu_usage_percent']}%")
+            
+            if 'cpu_usage_percent' in data:
+                performance_controller.max_cpu_usage_percent = data['cpu_usage_percent']
+                results['updated']['cpu_usage_percent'] = data['cpu_usage_percent']
+                print(f"   Set CPU usage limit: {data['cpu_usage_percent']}%")
+            
+            if 'usage_limiter_enabled' in data:
+                performance_controller.usage_limiter_enabled = data['usage_limiter_enabled']
+                results['updated']['usage_limiter_enabled'] = data['usage_limiter_enabled']
+                print(f"   Usage limiter: {'ON' if data['usage_limiter_enabled'] else 'OFF'}")
+            
+            if 'safety_buffer_enabled' in data:
+                performance_controller.safety_buffer_enabled = data['safety_buffer_enabled']
+                results['updated']['safety_buffer_enabled'] = data['safety_buffer_enabled']
+                print(f"   Safety buffer: {'ON' if data['safety_buffer_enabled'] else 'OFF'}")
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
