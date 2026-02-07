@@ -25,6 +25,10 @@ from core.logging_system import LoggingSystem
 from core.memory_system import AdvancedMemory
 from core.resource_monitor import get_monitor, get_controller
 from core.comprehensive_status import status_monitor as comprehensive_monitor
+from core.tool_executor import ToolExecutor
+from scripts.smart_parser import parse_tool_declarations, remove_tool_declarations
+from core.ai_protocol import get_system_prompt
+from tools import generate_tools_description
 
 # Initialize logging and memory
 logging_system = LoggingSystem()
@@ -256,7 +260,10 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_json_error(str(e))
     
     def handle_chat(self):
-        """Handle chat requests - supports normal, web, and commander modes"""
+        """
+        Handle chat requests with intelligent tool execution
+        Supports normal, web, and commander modes
+        """
         try:
             # Read request body
             content_length = int(self.headers['Content-Length'])
@@ -282,17 +289,37 @@ class APIHandler(BaseHTTPRequestHandler):
             
             print(f"💬 Chat [{mode}]: {message[:50]}...")
             
-            # USE CACHED DRIVER - DON'T RELOAD EVERY TIME
+            # Get driver
             driver, pm = get_cached_driver()
-            
             if not driver:
                 self.send_error(500, "Driver not initialized")
                 return
             
-            # Build history with current message (driver expects List[Dict])
-            chat_history = history + [{"role": "user", "content": message}]
+            # Create tool executor for this request
+            tool_executor = ToolExecutor(
+                commander_mode=commander_mode,
+                web_search_mode=web_mode
+            )
             
-            # Start streaming response (NO chunked encoding - just flush)
+            # Generate tools description for system prompt
+            tools_desc = generate_tools_description(
+                commander_mode=commander_mode,
+                web_search_mode=web_mode
+            )
+            
+            # Get system prompt with tools
+            system_prompt = get_system_prompt(
+                commander_mode=commander_mode,
+                web_search_mode=web_mode,
+                tools_description=tools_desc
+            )
+            
+            # Build chat history with system prompt
+            chat_history = [{"role": "system", "content": system_prompt}]
+            chat_history.extend(history)
+            chat_history.append({"role": "user", "content": message})
+            
+            # Start streaming response
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -300,97 +327,23 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.end_headers()
             
-            full_response = ""
+            # Send mode indicator
+            mode_indicator = ""
+            if commander_mode:
+                mode_indicator = "⚡ **Commander Mode Active**\n\n"
+            elif web_mode:
+                mode_indicator = "🌐 **Web Search Mode Active**\n\n"
             
-            # Handle modes
-            if mode == "web":
-                # Web mode - USE EXISTING WEB SEARCH TOOL
-                intro = "🌐 **Web Search Mode**\n\nSearching...\n\n"
-                chunk = json.dumps({"type": "token", "token": intro}) + "\n"
+            if mode_indicator:
+                chunk = json.dumps({"type": "token", "token": mode_indicator}) + "\n"
                 self.wfile.write(chunk.encode())
                 self.wfile.flush()
-                full_response += intro
-                
-                # Use existing web search tool
-                try:
-                    from tools.web.search import web_search
-                    search_results = web_search(message)
-                    
-                    if search_results:
-                        result_msg = f"📊 Search Results:\n\n{search_results}\n\n"
-                        chunk = json.dumps({"type": "token", "token": result_msg}) + "\n"
-                        self.wfile.write(chunk.encode())
-                        self.wfile.flush()
-                        full_response += result_msg
-                        
-                        # Give AI the search results
-                        chat_history[-1]["content"] = f"User query: {message}\n\nWeb search results:\n{search_results}\n\nProvide a helpful answer based on these results."
-                    else:
-                        error_msg = "⚠️ No search results found.\n\n"
-                        chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
-                        self.wfile.write(chunk.encode())
-                        self.wfile.flush()
-                        full_response += error_msg
-                        
-                except Exception as e:
-                    error_msg = f"⚠️ Web search error: {e}\n\nAnswering from knowledge...\n\n"
-                    chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
-                    self.wfile.write(chunk.encode())
-                    self.wfile.flush()
-                    full_response += error_msg
-                
-            elif mode == "commander":
-                # Commander mode - USE EXISTING SYSTEM TOOLS
-                intro = "⚡ **Commander Mode**\n\n"
-                chunk = json.dumps({"type": "token", "token": intro}) + "\n"
-                self.wfile.write(chunk.encode())
-                self.wfile.flush()
-                full_response += intro
-                
-                # Use existing system tools
-                try:
-                    from tools.system.info import get_current_time, get_current_date, get_system_info
-                    
-                    result_data = None
-                    
-                    # Detect what user wants
-                    msg_lower = message.lower()
-                    if "time" in msg_lower:
-                        result_data = get_current_time()
-                    elif "date" in msg_lower:
-                        result_data = get_current_date()
-                    elif "system" in msg_lower or "info" in msg_lower:
-                        result_data = get_system_info()
-                    
-                    if result_data and result_data.get('success'):
-                        # Show the result
-                        output_msg = f"```\n{result_data.get('message', str(result_data))}\n```\n\n"
-                        chunk = json.dumps({"type": "token", "token": output_msg}) + "\n"
-                        self.wfile.write(chunk.encode())
-                        self.wfile.flush()
-                        full_response += output_msg
-                        
-                        # Let AI explain
-                        chat_history[-1]["content"] = f"User request: {message}\n\nResult: {result_data.get('message', '')}\n\nBriefly acknowledge this."
-                    else:
-                        no_exec_msg = "⚠️ Command not recognized. Try: time, date, or system info\n\n"
-                        chunk = json.dumps({"type": "token", "token": no_exec_msg}) + "\n"
-                        self.wfile.write(chunk.encode())
-                        self.wfile.flush()
-                        full_response += no_exec_msg
-                        
-                except Exception as e:
-                    error_msg = f"⚠️ Commander error: {e}\n\n"
-                    chunk = json.dumps({"type": "token", "token": error_msg}) + "\n"
-                    self.wfile.write(chunk.encode())
-                    self.wfile.flush()
-                    full_response += error_msg
             
-            # Stream tokens directly from driver - IMMEDIATE FLUSH
+            # Phase 1: Get AI response (may contain tool declarations)
+            ai_response = ""
             for token in driver.generate(chat_history, stream=True):
-                full_response += token
-                
-                # Send token as JSON line - flush immediately
+                ai_response += token
+                # Stream tokens to user in real-time
                 chunk = json.dumps({"type": "token", "token": token}) + "\n"
                 try:
                     self.wfile.write(chunk.encode())
@@ -398,18 +351,70 @@ class APIHandler(BaseHTTPRequestHandler):
                 except BrokenPipeError:
                     break
             
-            # Send done
-            done_chunk = json.dumps({"type": "done", "full_response": full_response}) + "\n"
+            # Phase 2: Check for tool declarations
+            tool_declarations = parse_tool_declarations(ai_response)
+            
+            if tool_declarations:
+                print(f"🛠️ AI requested {len(tool_declarations)} tools")
+                
+                # Execute tools
+                tool_results = tool_executor.execute_tools(tool_declarations)
+                
+                # Format results for user
+                user_results = tool_executor.format_for_user(tool_results)
+                if user_results:
+                    result_chunk = json.dumps({"type": "token", "token": f"\n{user_results}\n"}) + "\n"
+                    try:
+                        self.wfile.write(result_chunk.encode())
+                        self.wfile.flush()
+                    except BrokenPipeError:
+                        pass
+                
+                # Phase 3: Give AI the tool results for final response
+                ai_results = tool_executor.format_results(tool_results)
+                clean_ai_response = remove_tool_declarations(ai_response)
+                
+                # Add tool results to history and ask AI to provide final answer
+                follow_up = f"""Previous AI response: {clean_ai_response}
+
+{ai_results}
+
+Now provide a natural, helpful response based on the tool results above. Be concise and informative."""
+                
+                chat_history.append({"role": "assistant", "content": ai_response})
+                chat_history.append({"role": "user", "content": follow_up})
+                
+                # Get final response from AI
+                final_intro = "\n💭 "
+                final_chunk = json.dumps({"type": "token", "token": final_intro}) + "\n"
+                try:
+                    self.wfile.write(final_chunk.encode())
+                    self.wfile.flush()
+                except BrokenPipeError:
+                    pass
+                
+                for token in driver.generate(chat_history, stream=True):
+                    chunk = json.dumps({"type": "token", "token": token}) + "\n"
+                    try:
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                    except BrokenPipeError:
+                        break
+            
+            # Send done signal
+            done_chunk = json.dumps({"type": "done"}) + "\n"
             try:
                 self.wfile.write(done_chunk.encode())
                 self.wfile.flush()
             except BrokenPipeError:
                 pass
             
-            print(f"✅ Chat complete ({len(full_response)} chars)")
+            print(f"✅ Chat complete")
             
         except Exception as e:
             print(f"❌ Chat error: {e}")
+            import traceback
+            traceback.print_exc()
             error_chunk = json.dumps({"type": "error", "message": str(e)}) + "\n"
             try:
                 self.wfile.write(error_chunk.encode())
