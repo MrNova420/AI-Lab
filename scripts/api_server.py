@@ -24,6 +24,7 @@ from core.reasoning import (
 from core.logging_system import LoggingSystem
 from core.memory_system import AdvancedMemory
 from core.resource_monitor import get_monitor, get_controller
+from core.comprehensive_status import status_monitor as comprehensive_monitor
 
 # Initialize logging and memory
 logging_system = LoggingSystem()
@@ -759,16 +760,30 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_json_error(str(e))
     
     def handle_get_resources(self):
-        """Get current resource usage"""
+        """Get current resource usage with comprehensive monitoring"""
         try:
-            stats = resource_monitor.get_all_stats()
+            # Use comprehensive monitor for detailed stats
+            stats = comprehensive_monitor.get_all_status()
+            
+            # Format for dashboard compatibility
+            formatted_stats = {
+                "cpu": stats["hardware"]["cpu"],
+                "gpu": stats["hardware"]["gpu"],
+                "memory": stats["hardware"]["memory"],
+                "disk": stats["hardware"]["storage"],
+                "system": stats["system"],
+                "processes": stats["processes"],
+                "uptime": stats["uptime"],
+                "network": stats["network"],
+                "health": stats["health"]
+            }
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            self.wfile.write(json.dumps(stats).encode())
+            self.wfile.write(json.dumps(formatted_stats).encode())
             
         except Exception as e:
             self.send_json_error(str(e))
