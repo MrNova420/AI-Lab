@@ -394,7 +394,12 @@ function Dashboard() {
             </h4>
             <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
               <button
-                onClick={() => updateSetting('usage_limiter_enabled', !settings.usage_limiter_enabled)}
+                onClick={() => {
+                  const newValue = !settings.usage_limiter_enabled;
+                  console.log(`Toggle Usage Limiter: ${newValue}`);
+                  setSettings(prev => ({...prev, usage_limiter_enabled: newValue}));
+                  updateSetting('usage_limiter_enabled', newValue);
+                }}
                 style={{
                   padding: '10px',
                   backgroundColor: settings.usage_limiter_enabled ? '#00ff88' : '#2a2a40',
@@ -413,7 +418,12 @@ function Dashboard() {
                 <span>{settings.usage_limiter_enabled ? '✓ ON' : '✗ OFF'}</span>
               </button>
               <button
-                onClick={() => updateSetting('safety_buffer_enabled', !settings.safety_buffer_enabled)}
+                onClick={() => {
+                  const newValue = !settings.safety_buffer_enabled;
+                  console.log(`Toggle Safety Buffer: ${newValue}`);
+                  setSettings(prev => ({...prev, safety_buffer_enabled: newValue}));
+                  updateSetting('safety_buffer_enabled', newValue);
+                }}
                 style={{
                   padding: '10px',
                   backgroundColor: settings.safety_buffer_enabled ? '#4a9eff' : '#2a2a40',
