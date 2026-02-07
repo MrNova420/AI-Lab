@@ -182,8 +182,15 @@ function Dashboard() {
                 GPU
               </div>
               <div style={{fontSize: '24px', fontWeight: 'bold', color: '#00ff88'}}>
-                {resources.gpu?.available ? `${resources.gpu?.usage_percent?.toFixed(1)}%` : 'N/A'}
+                {resources.gpu?.available && resources.gpu?.devices?.[0] 
+                  ? `${resources.gpu.devices[0].usage_percent?.toFixed(1)}%` 
+                  : 'N/A'}
               </div>
+              {resources.gpu?.available && resources.gpu?.devices?.[0] && (
+                <div style={{fontSize: '10px', color: '#666', marginTop: '4px'}}>
+                  {resources.gpu.devices[0].name?.substring(0, 20)} • {resources.gpu.devices[0].temperature_c}°C
+                </div>
+              )}
             </div>
             <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
               <div style={{fontSize: '11px', color: '#888', marginBottom: '6px'}}>
