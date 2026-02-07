@@ -31,9 +31,16 @@ function Dashboard() {
     loadResources();
     loadSessions();
     
-    // Update resources every 1 second for better accuracy
-    const interval = setInterval(loadResources, 1000);
-    return () => clearInterval(interval);
+    // Update resources every 1 second for live GPU/CPU monitoring
+    const resourceInterval = setInterval(loadResources, 1000);
+    
+    // Update sessions every 10 seconds for recent chat sync
+    const sessionInterval = setInterval(loadSessions, 10000);
+    
+    return () => {
+      clearInterval(resourceInterval);
+      clearInterval(sessionInterval);
+    };
   }, []);
 
   const loadResources = async () => {
