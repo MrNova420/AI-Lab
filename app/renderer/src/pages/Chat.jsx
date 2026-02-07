@@ -19,8 +19,19 @@ function Chat() {
   }, [messages, currentResponse]);
 
   useEffect(() => {
-    // Update resources every 2 seconds
-    const interval = setInterval(loadResources, 2000);
+    // Update resources every 1 second for instant feedback
+    const loadResourcesNow = async () => {
+      try {
+        const response = await fetch('http://localhost:5174/api/resources/stats');
+        const data = await response.json();
+        setResources(data);
+      } catch (err) {
+        console.error('Failed to load resources:', err);
+      }
+    };
+    
+    loadResourcesNow(); // Load immediately
+    const interval = setInterval(loadResourcesNow, 1000); // Update every 1 second
     return () => clearInterval(interval);
   }, []);
 
