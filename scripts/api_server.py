@@ -34,6 +34,23 @@ memory_system = AdvancedMemory()
 resource_monitor = get_monitor()
 performance_controller = get_controller()
 
+# Initialize driver ONCE at startup (not on every request)
+_cached_driver = None
+_cached_pm = None
+
+def get_cached_driver():
+    """Get or create cached driver instance"""
+    global _cached_driver, _cached_pm
+    if _cached_driver is None:
+        try:
+            _cached_pm = ProjectManager(str(PROJECT_ROOT))
+            project_config = _cached_pm.get_active_project_config()
+            runtime_mgr = ModelRuntimeManager(str(PROJECT_ROOT))
+            _cached_driver = runtime_mgr.get_driver(project_config)
+        except Exception as e:
+            print(f"⚠️ Failed to initialize driver: {e}")
+    return _cached_driver, _cached_pm
+
 class APIHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         """Handle CORS preflight"""
@@ -794,14 +811,10 @@ class APIHandler(BaseHTTPRequestHandler):
             # Get base settings from performance controller
             settings = performance_controller.get_current_settings()
             
-            # Get driver settings if available
+            # Get driver settings if available (use cached driver)
             try:
-                pm = ProjectManager(str(PROJECT_ROOT))
-                project_config = pm.get_active_project_config()
-                runtime_mgr = ModelRuntimeManager(str(PROJECT_ROOT))
-                driver = runtime_mgr.get_driver(project_config)
-                
-                if hasattr(driver, 'get_settings'):
+                driver, pm = get_cached_driver()
+                if driver and hasattr(driver, 'get_settings'):
                     driver_settings = driver.get_settings()
                     settings.update(driver_settings)
             except:
