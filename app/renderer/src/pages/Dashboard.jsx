@@ -459,15 +459,23 @@ function Dashboard() {
               type="range"
               min="1"
               max="16"
+              step="1"
               value={settings.cpu_threads || 4}
-              onChange={(e) => updateSetting('cpu_threads', e.target.value)}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                console.log(`CPU Threads: ${value}`);
+                setSettings(prev => ({...prev, cpu_threads: value}));
+                updateSetting('cpu_threads', value);
+              }}
               style={{
                 width: '100%',
-                height: '6px',
-                borderRadius: '3px',
+                height: '8px',
+                borderRadius: '4px',
                 background: `linear-gradient(to right, #4a9eff 0%, #4a9eff ${(settings.cpu_threads || 4) * 6.25}%, #2a2a40 ${(settings.cpu_threads || 4) * 6.25}%, #2a2a40 100%)`,
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                WebkitAppearance: 'none',
+                appearance: 'none'
               }}
             />
             <div style={{
@@ -506,14 +514,21 @@ function Dashboard() {
               max="32"
               step="0.5"
               value={settings.memory_limit || 8}
-              onChange={(e) => updateSetting('memory_limit', e.target.value)}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                console.log(`Memory: ${value} GB`);
+                setSettings(prev => ({...prev, memory_limit: value}));
+                updateSetting('memory_limit', value);
+              }}
               style={{
                 width: '100%',
-                height: '6px',
-                borderRadius: '3px',
+                height: '8px',
+                borderRadius: '4px',
                 background: `linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${((settings.memory_limit || 8) - 2) * 3.33}%, #2a2a40 ${((settings.memory_limit || 8) - 2) * 3.33}%, #2a2a40 100%)`,
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                WebkitAppearance: 'none',
+                appearance: 'none'
               }}
             />
             <div style={{
