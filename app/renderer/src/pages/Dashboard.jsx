@@ -458,7 +458,7 @@ function Dashboard() {
             <input
               type="range"
               min="1"
-              max="16"
+              max={settings.max_threads || 5}
               step="1"
               value={settings.cpu_threads || 4}
               onChange={(e) => {
@@ -471,7 +471,7 @@ function Dashboard() {
                 width: '100%',
                 height: '8px',
                 borderRadius: '4px',
-                background: `linear-gradient(to right, #4a9eff 0%, #4a9eff ${(settings.cpu_threads || 4) * 6.25}%, #2a2a40 ${(settings.cpu_threads || 4) * 6.25}%, #2a2a40 100%)`,
+                background: `linear-gradient(to right, #4a9eff 0%, #4a9eff ${((settings.cpu_threads || 4) / (settings.max_threads || 5)) * 100}%, #2a2a40 ${((settings.cpu_threads || 4) / (settings.max_threads || 5)) * 100}%, #2a2a40 100%)`,
                 outline: 'none',
                 cursor: 'pointer',
                 WebkitAppearance: 'none',
@@ -486,7 +486,7 @@ function Dashboard() {
               justifyContent: 'space-between'
             }}>
               <span>1</span>
-              <span>16</span>
+              <span>{settings.max_threads || 5}</span>
             </div>
           </div>
 
@@ -510,8 +510,8 @@ function Dashboard() {
             </h4>
             <input
               type="range"
-              min="2"
-              max="32"
+              min="1"
+              max={Math.floor(settings.total_memory_gb) || 10}
               step="0.5"
               value={settings.memory_limit || 8}
               onChange={(e) => {
@@ -524,7 +524,7 @@ function Dashboard() {
                 width: '100%',
                 height: '8px',
                 borderRadius: '4px',
-                background: `linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${((settings.memory_limit || 8) - 2) * 3.33}%, #2a2a40 ${((settings.memory_limit || 8) - 2) * 3.33}%, #2a2a40 100%)`,
+                background: `linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${((settings.memory_limit || 8) / (settings.total_memory_gb || 10)) * 100}%, #2a2a40 ${((settings.memory_limit || 8) / (settings.total_memory_gb || 10)) * 100}%, #2a2a40 100%)`,
                 outline: 'none',
                 cursor: 'pointer',
                 WebkitAppearance: 'none',
@@ -538,8 +538,8 @@ function Dashboard() {
               display: 'flex',
               justifyContent: 'space-between'
             }}>
-              <span>2 GB</span>
-              <span>32 GB</span>
+              <span>1 GB</span>
+              <span>{settings.total_memory_gb?.toFixed(1) || 10} GB</span>
             </div>
           </div>
         </div>
