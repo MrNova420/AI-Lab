@@ -171,8 +171,8 @@ function Chat() {
             color: '#888'
           }}>
             <span>🖥️ CPU: <strong style={{color: '#4a9eff'}}>{resources.cpu?.usage_percent?.toFixed(0) || '0'}%</strong></span>
-            {resources.gpu?.available && (
-              <span>🎮 GPU: <strong style={{color: '#00ff88'}}>{resources.gpu?.usage_percent?.toFixed(0)}%</strong></span>
+            {resources.gpu?.available && resources.gpu?.devices?.[0] && (
+              <span>🎮 GPU: <strong style={{color: '#00ff88'}}>{resources.gpu.devices[0].usage_percent?.toFixed(0) || '0'}%</strong> <span style={{color: '#666'}}>({resources.gpu.devices[0].temperature_c}°C)</span></span>
             )}
             <span>💾 RAM: <strong style={{color: '#ffaa00'}}>{resources.memory?.percent?.toFixed(0) || '0'}%</strong></span>
           </div>
