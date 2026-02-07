@@ -210,13 +210,36 @@ class PerformanceController:
     
     def get_current_settings(self) -> Dict:
         """Get current performance settings"""
+        total_memory = psutil.virtual_memory().total / (1024**3)
+        
+        # Calculate actual usage with safety buffer
+        actual_gpu_usage = self.max_gpu_usage_percent
+        actual_cpu_usage = self.max_cpu_usage_percent
+        
+        if self.safety_buffer_enabled:
+            actual_gpu_usage = max(0, self.max_gpu_usage_percent - self.gpu_safety_buffer)
+            actual_cpu_usage = max(0, self.max_cpu_usage_percent - self.cpu_safety_buffer)
+        
         return {
-            'device': self.current_device,
+            'device': self.current_device.upper(),
             'cpu_threads': self.cpu_threads,
             'max_threads': psutil.cpu_count(),
             'memory_limit_gb': self.max_memory_gb,
-            'total_memory_gb': psutil.virtual_memory().total / (1024**3),
-            'temperature_limit': self.temperature_limit
+            'total_memory_gb': total_memory,
+            'temperature_limit': self.temperature_limit,
+            'use_gpu': self.current_device == 'gpu',
+            'num_gpu': 1 if self.current_device == 'gpu' else 0,
+            'num_threads': 8,
+            'max_gpu_usage_percent': self.max_gpu_usage_percent,
+            'max_cpu_usage_percent': self.max_cpu_usage_percent,
+            'gpu_usage_percent': self.max_gpu_usage_percent,
+            'cpu_usage_percent': self.max_cpu_usage_percent,
+            'usage_limiter_enabled': self.usage_limiter_enabled,
+            'safety_buffer_enabled': self.safety_buffer_enabled,
+            'gpu_safety_buffer': self.gpu_safety_buffer,
+            'cpu_safety_buffer': self.cpu_safety_buffer,
+            'actual_gpu_usage': actual_gpu_usage,
+            'actual_cpu_usage': actual_cpu_usage
         }
     
     def get_recommendations(self, stats: Dict) -> list:
