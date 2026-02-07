@@ -260,25 +260,53 @@ class APIHandler(BaseHTTPRequestHandler):
             history = data.get('history', [])
             commander_mode = data.get('commander_mode', False)
             web_search_mode = data.get('web_search_mode', False)
-            session_id = data.get('session_id', 'default')
-            
-            print(f"[API] Chat - Commander: {commander_mode}, Web Search: {web_search_mode}, Session: {session_id}")
-            
-            # Get reasoning layer instances for this session
-            context_mem = get_context(session_id)
-            reasoning = get_reasoning(session_id)
-            verifier = get_verifier(session_id)
             
             if not message:
                 self.send_error(400, "No message provided")
                 return
             
-            # Initialize managers
-            pm = ProjectManager(str(PROJECT_ROOT))
-            project_config = pm.get_active_project_config()
+            print(f"💬 Chat: {message[:50]}...")
             
-            runtime_mgr = ModelRuntimeManager(str(PROJECT_ROOT))
-            driver = runtime_mgr.get_driver(project_config)
+            # USE CACHED DRIVER - DON'T RELOAD EVERY TIME
+            driver, pm = get_cached_driver()
+            
+            if not driver:
+                self.send_error(500, "Driver not initialized")
+                return
+            
+            # Simple generate - no extra processing
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.send_header('Transfer-Encoding', 'chunked')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            full_response = ""
+            
+            # Stream tokens directly from driver
+            for token in driver.generate(message, history, stream=True):
+                full_response += token
+                
+                # Send token as JSON line
+                chunk = json.dumps({"type": "token", "token": token}) + "\n"
+                self.wfile.write(chunk.encode())
+                self.wfile.flush()
+            
+            # Send done
+            done_chunk = json.dumps({"type": "done", "full_response": full_response}) + "\n"
+            self.wfile.write(done_chunk.encode())
+            self.wfile.flush()
+            
+            print(f"✅ Chat complete ({len(full_response)} chars)")
+            
+        except Exception as e:
+            print(f"❌ Chat error: {e}")
+            error_chunk = json.dumps({"type": "error", "message": str(e)}) + "\n"
+            try:
+                self.wfile.write(error_chunk.encode())
+                self.wfile.flush()
+            except:
+                pass
             
             # If commander mode, add system prompt with tools + context
             if commander_mode or web_search_mode:
