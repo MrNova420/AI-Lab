@@ -503,7 +503,7 @@ class APIHandler(BaseHTTPRequestHandler):
                 # Save session periodically
                 context_mem.save_session(session_id)
             
-            # Log AI response to session
+            # Log AI response to session (saves immediately!)
             logging_system.log_message(
                 role="assistant",
                 content=full_response,
@@ -516,9 +516,7 @@ class APIHandler(BaseHTTPRequestHandler):
             # Store in memory system
             memory_system.short_term.add(f"Assistant: {full_response}")
             
-            # Auto-save session every 10 messages
-            if len(logging_system.current_session.get('messages', [])) % 10 == 0:
-                logging_system.save_session()
+            # No need to check "every 10" - already saving immediately!
             
             # Send done message
             done = json.dumps({"type": "done", "full_response": full_response}) + "\n"
