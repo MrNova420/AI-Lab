@@ -838,7 +838,15 @@ class APIHandler(BaseHTTPRequestHandler):
             data = json.loads(body)
             
             device = data.get('device', 'cpu')
+            print(f"🔄 Switching to {device.upper()}...")
+            
             result = performance_controller.switch_device(device)
+            
+            # Clear cached driver to force reload with new device
+            global _cached_driver, _cached_pm
+            _cached_driver = None
+            _cached_pm = None
+            print(f"   Cleared driver cache - will reload with {device.upper()} on next request")
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
