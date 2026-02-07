@@ -112,6 +112,8 @@ function Dashboard() {
 
   const updateSetting = async (key, value) => {
     try {
+      console.log(`updateSetting called: ${key} = ${value}`);
+      
       const payload = {};
       
       if (key === 'cpu_threads') {
@@ -128,6 +130,8 @@ function Dashboard() {
         payload.safety_buffer_enabled = value;
       }
       
+      console.log('Sending payload:', payload);
+      
       const response = await fetch('http://localhost:5174/api/resources/configure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,13 +139,15 @@ function Dashboard() {
       });
       
       const result = await response.json();
+      console.log('Response:', result);
       
       if (result.success) {
         console.log(`✅ ${key} updated successfully`);
-        setSettings(prev => ({...prev, [key]: value}));
         
         // Reload to get actual values with buffer applied
         setTimeout(loadResources, 500);
+      } else {
+        console.error('Update failed:', result);
       }
     } catch (error) {
       console.error('Error updating setting:', error);
@@ -315,22 +321,28 @@ function Dashboard() {
               type="range"
               min="0"
               max="100"
+              step="1"
               value={settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}
-              onChange={(e) => updateSetting(
-                settings.device === 'gpu' ? 'gpu_usage_percent' : 'cpu_usage_percent', 
-                e.target.value
-              )}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                const key = settings.device === 'gpu' ? 'gpu_usage_percent' : 'cpu_usage_percent';
+                console.log(`Slider changed: ${key} = ${value}`);
+                setSettings(prev => ({...prev, [key]: value}));
+                updateSetting(key, value);
+              }}
               disabled={!settings.usage_limiter_enabled}
               style={{
                 width: '100%',
-                height: '6px',
-                borderRadius: '3px',
+                height: '8px',
+                borderRadius: '4px',
                 background: settings.usage_limiter_enabled 
                   ? `linear-gradient(to right, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} 0%, ${settings.device === 'gpu' ? '#00ff88' : '#4a9eff'} ${settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}%, #2a2a40 ${settings.device === 'gpu' ? settings.gpu_usage_percent : settings.cpu_usage_percent}%, #2a2a40 100%)`
                   : '#2a2a40',
                 outline: 'none',
                 cursor: settings.usage_limiter_enabled ? 'pointer' : 'not-allowed',
-                opacity: settings.usage_limiter_enabled ? 1 : 0.5
+                opacity: settings.usage_limiter_enabled ? 1 : 0.5,
+                WebkitAppearance: 'none',
+                appearance: 'none'
               }}
             />
             <div style={{
