@@ -10,7 +10,11 @@ import SettingsPage from './pages/Settings';
 
 function App() {
   const [config, setConfig] = useState({ project_name: 'default', active_model_tag: null });
-
+  
+  // PERSIST CHAT STATE AT APP LEVEL
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  
   useEffect(() => {
     if (window.electron) {
       window.electron.project.getConfig().then(setConfig);
@@ -56,7 +60,14 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/models" element={<Models />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat" element={
+              <Chat 
+                messages={chatMessages} 
+                setMessages={setChatMessages}
+                input={chatInput}
+                setInput={setChatInput}
+              />
+            } />
             <Route path="/voice" element={<Voice />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/settings" element={<SettingsPage />} />

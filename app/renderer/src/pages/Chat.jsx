@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-function Chat() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [commanderMode, setCommanderMode] = useState(false);
@@ -16,8 +14,6 @@ function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, currentResponse]);
-
-  // REMOVED ALL STATUS POLLING - NO MORE BACKGROUND REQUESTS
 
   useEffect(() => {
     // Listen for streaming tokens
