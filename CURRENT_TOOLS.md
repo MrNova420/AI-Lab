@@ -127,23 +127,44 @@ The AI has **21 tools** across 3 categories:
 
 **Enable with the 🌐 button in Voice/Chat interface**
 
-**`web_search(query, quick)`**
-- Search the internet
-- Parameters: `query` (string), `quick` (bool)
-- Returns: Top results with titles and snippets
-- Example: "Search for AI news"
+**`web_search(query, max_results)`** 🌐⚡
+- **Multi-source web search across ALL major engines**
+- Searches: Google, Bing, DuckDuckGo, Brave simultaneously
+- Parameters: `query` (string), `max_results` (int, default=10)
+- Returns: Ranked results with titles, URLs, snippets, and source info
+- Example: "Search for latest AI news" → Results from all 4 engines
+- **ALWAYS use this for web searches - most comprehensive!**
 
-**`verify_info(query, claim)`**
-- Fact-check claims
-- Parameters: `query` (string), `claim` (string)
-- Returns: Verification from multiple sources
-- Example: "Verify that Python 3.12 was released in 2023"
+**`deep_research(query, max_results, scrape_top)`** 🔬
+- **Comprehensive research with web scraping + analysis**
+- Multi-source search + scrapes top pages + quality analysis
+- Parameters: `query`, `max_results` (default=15), `scrape_top` (default=5)
+- Returns: Search results + full scraped content + quality scores
+- Example: "Research quantum computing advances"
+- **Use for in-depth research needing detailed information**
 
-**`deep_search(query)`**
-- Deep research across sources
-- Parameters: `query` (string)
-- Returns: Aggregated, verified information
-- Example: "Do deep research on quantum computing"
+**`fact_check(claim)`** ✓
+- **Quick fact verification across multiple sources**
+- Checks: Google, Bing, DuckDuckGo for consensus
+- Parameters: `claim` (string to verify)
+- Returns: Verification status + evidence + source count
+- Example: fact_check("Python was created in 1991")
+- **Use for verifying claims and checking facts**
+
+**`scrape_webpage(url)`** 📄
+- **Extract clean text from any webpage**
+- Removes ads/navigation, returns main content only
+- Parameters: `url` (string)
+- Returns: Title + clean text content
+- Example: scrape_webpage("https://python.org")
+- **Use for reading full articles or documentation**
+
+**`scrape_multiple(urls)`** 📚
+- **Batch scrape multiple pages in parallel**
+- Fast parallel extraction from multiple URLs at once
+- Parameters: `urls` (list of strings)
+- Returns: Content from all pages
+- Example: scrape_multiple(["url1", "url2", "url3"])
 
 ---
 

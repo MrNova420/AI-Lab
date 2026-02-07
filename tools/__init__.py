@@ -105,28 +105,46 @@ TOOLS = {
             "requires_verification": False
         },
         "web_search": {
-            "module": "tools.web.search",
-            "function": "web_search",
-            "description": "Search the web using multiple sources (DuckDuckGo, etc). Returns summarized results with titles, URLs, and snippets. Use quick=True for fast results.",
-            "params": {"query": "string", "quick": "bool"},
+            "module": "tools.web.advanced_search",
+            "function": "advanced_web_search",
+            "description": "🌐 ADVANCED: Multi-source web search across Google, Bing, DuckDuckGo, and Brave simultaneously. Fast parallel search with intelligent ranking and deduplication. Always use this for web searches - provides most up-to-date, accurate results from all major search engines.",
+            "params": {"query": "string", "max_results": "int"},
             "requires_commander": False,
             "requires_web": True,
             "requires_verification": True  # Web results need verification
         },
-        "verify_info": {
-            "module": "tools.web.search",
-            "function": "verify_information",
-            "description": "Verify a claim by searching multiple sources and checking consistency. Best for fact-checking.",
-            "params": {"query": "string", "claim": "string"},
+        "deep_research": {
+            "module": "tools.web.advanced_search",
+            "function": "deep_web_research",
+            "description": "🔬 DEEP RESEARCH: Comprehensive research with web scraping and analysis. Searches multiple sources, scrapes top result pages, extracts full content, and provides quality-scored analysis. Best for in-depth research topics requiring detailed information.",
+            "params": {"query": "string", "max_results": "int", "scrape_top": "int"},
             "requires_commander": False,
             "requires_web": True,
             "requires_verification": True
         },
-        "deep_search": {
-            "module": "tools.web.search",
-            "function": "search_multiple_sources",
-            "description": "Deep search across multiple sources with aggregation and verification. Best for research and comprehensive information gathering.",
-            "params": {"query": "string"},
+        "fact_check": {
+            "module": "tools.web.advanced_search",
+            "function": "quick_fact_check",
+            "description": "✓ FACT CHECK: Quick fact verification across Google, Bing, and DuckDuckGo. Returns verification status, number of sources confirming, and supporting evidence. Use for verifying claims or checking accuracy.",
+            "params": {"claim": "string"},
+            "requires_commander": False,
+            "requires_web": True,
+            "requires_verification": True
+        },
+        "scrape_webpage": {
+            "module": "tools.web.advanced_search",
+            "function": "scrape_webpage",
+            "description": "📄 SCRAPE: Extract clean text content from any webpage. Returns title and main content without ads, navigation, or clutter. Perfect for reading full articles or documentation.",
+            "params": {"url": "string"},
+            "requires_commander": False,
+            "requires_web": True,
+            "requires_verification": True
+        },
+        "scrape_multiple": {
+            "module": "tools.web.advanced_search",
+            "function": "scrape_multiple_pages",
+            "description": "📚 BATCH SCRAPE: Scrape multiple webpages in parallel for fast content extraction. Provide list of URLs to extract content from all at once.",
+            "params": {"urls": "list"},
             "requires_commander": False,
             "requires_web": True,
             "requires_verification": True
