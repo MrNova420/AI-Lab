@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Zap, MessageSquare, Clock, Archive } from 'lucide-react';
+import { Activity, Zap, MessageSquare, Clock, Archive, Cpu, Settings } from 'lucide-react';
 
 function Dashboard() {
   const [models, setModels] = useState([]);
   const [config, setConfig] = useState({});
   const [sessions, setSessions] = useState([]);
   const [sessionStats, setSessionStats] = useState({ total: 0, messages: 0 });
+  const [resources, setResources] = useState({cpu: {}, gpu: {}, memory: {}, disk: {}});
+  const [settings, setSettings] = useState({device: 'cpu', cpu_threads: 4, memory_limit_gb: 8});
 
   useEffect(() => {
     loadData();
     loadSessions();
+    loadResources();
+    
+    // Update resources every 2 seconds
+    const interval = setInterval(loadResources, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
@@ -85,6 +92,51 @@ function Dashboard() {
     }
   };
 
+  const loadResources = async () => {
+    try {
+      const response = await fetch('http://localhost:5174/api/resources/stats');
+      const data = await response.json();
+      setResources(data);
+      
+      const settingsResponse = await fetch('http://localhost:5174/api/resources/settings');
+      const settingsData = await settingsResponse.json();
+      setSettings(settingsData);
+    } catch (err) {
+      console.error('Failed to load resources:', err);
+    }
+  };
+
+  const switchDevice = async (device) => {
+    try {
+      const response = await fetch('http://localhost:5174/api/resources/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ Switched to ${device.toUpperCase()}`);
+        loadResources();
+      }
+    } catch (err) {
+      alert(`❌ Failed to switch device: ${err.message}`);
+    }
+  };
+
+  const updateSettings = async (key, value) => {
+    try {
+      const response = await fetch('http://localhost:5174/api/resources/configure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value })
+      });
+      await response.json();
+      loadResources();
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+    }
+  };
+
   return (
     <div>
       <h1 className="page-title">Dashboard</h1>
@@ -115,6 +167,114 @@ function Dashboard() {
               {config.active_model_tag ? 'Ready' : 'No Model Selected'}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Resource Control Panel */}
+      <div className="card">
+        <h3 style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px'}}>
+          <Settings size={20} />
+          Resource Control
+        </h3>
+
+        {/* Live Resource Stats */}
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px'}}>
+          <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontSize: '11px', color: '#888', marginBottom: '6px'}}>
+              <Cpu size={14} style={{display: 'inline', marginRight: '4px'}} />
+              CPU Usage
+            </div>
+            <div style={{fontSize: '20px', fontWeight: 'bold', color: '#4a9eff'}}>
+              {resources.cpu?.usage_percent?.toFixed(1) || '0'}%
+            </div>
+          </div>
+          <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontSize: '11px', color: '#888', marginBottom: '6px'}}>GPU Usage</div>
+            <div style={{fontSize: '20px', fontWeight: 'bold', color: '#00ff88'}}>
+              {resources.gpu?.available ? `${resources.gpu.usage_percent?.toFixed(1)}%` : 'N/A'}
+            </div>
+          </div>
+          <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontSize: '11px', color: '#888', marginBottom: '6px'}}>Memory</div>
+            <div style={{fontSize: '20px', fontWeight: 'bold', color: '#ffaa00'}}>
+              {resources.memory?.percent?.toFixed(1) || '0'}%
+            </div>
+          </div>
+          <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontSize: '11px', color: '#888', marginBottom: '6px'}}>Disk</div>
+            <div style={{fontSize: '20px', fontWeight: 'bold', color: '#ff4444'}}>
+              {resources.disk?.percent?.toFixed(1) || '0'}%
+            </div>
+          </div>
+        </div>
+
+        {/* Device Selection */}
+        <div style={{marginBottom: '16px'}}>
+          <label style={{fontSize: '12px', color: '#888', display: 'block', marginBottom: '8px'}}>
+            Device:
+          </label>
+          <div style={{display: 'flex', gap: '8px'}}>
+            <button
+              onClick={() => switchDevice('cpu')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                backgroundColor: settings.device === 'cpu' ? '#4a9eff' : '#333',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🖥️ CPU {settings.device === 'cpu' && '✓'}
+            </button>
+            <button
+              onClick={() => switchDevice('gpu')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                backgroundColor: settings.device === 'gpu' ? '#00ff88' : '#333',
+                color: settings.device === 'gpu' ? 'black' : 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🎮 GPU {settings.device === 'gpu' && '✓'}
+            </button>
+          </div>
+        </div>
+
+        {/* CPU Threads Slider */}
+        <div style={{marginBottom: '16px'}}>
+          <label style={{fontSize: '12px', color: '#888', display: 'block', marginBottom: '8px'}}>
+            CPU Threads: {settings.cpu_threads} / {settings.max_threads}
+          </label>
+          <input
+            type="range"
+            min="1"
+            max={settings.max_threads || 8}
+            value={settings.cpu_threads}
+            onChange={(e) => updateSettings('cpu_threads', parseInt(e.target.value))}
+            style={{width: '100%'}}
+          />
+        </div>
+
+        {/* Memory Limit Slider */}
+        <div>
+          <label style={{fontSize: '12px', color: '#888', display: 'block', marginBottom: '8px'}}>
+            Memory Limit: {settings.memory_limit_gb} GB / {settings.total_memory_gb?.toFixed(0)} GB
+          </label>
+          <input
+            type="range"
+            min="1"
+            max={settings.total_memory_gb || 16}
+            value={settings.memory_limit_gb}
+            onChange={(e) => updateSettings('memory_limit', parseInt(e.target.value))}
+            style={{width: '100%'}}
+          />
         </div>
       </div>
 

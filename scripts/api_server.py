@@ -23,10 +23,15 @@ from core.reasoning import (
 )
 from core.logging_system import LoggingSystem
 from core.memory_system import AdvancedMemory
+from core.resource_monitor import get_monitor, get_controller
 
 # Initialize logging and memory
 logging_system = LoggingSystem()
 memory_system = AdvancedMemory()
+
+# Initialize resource monitoring
+resource_monitor = get_monitor()
+performance_controller = get_controller()
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -45,6 +50,10 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_list_models()
         elif path == '/api/project/config':
             self.handle_get_project_config()
+        elif path == '/api/resources/stats':
+            self.handle_get_resources()
+        elif path == '/api/resources/settings':
+            self.handle_get_settings()
         else:
             self.send_error(404)
     
@@ -76,6 +85,10 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_load_session()
         elif path == '/api/sessions/export':
             self.handle_export_session()
+        elif path == '/api/resources/switch':
+            self.handle_switch_device()
+        elif path == '/api/resources/configure':
+            self.handle_configure_resources()
         else:
             self.send_error(404)
     
@@ -745,6 +758,81 @@ class APIHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_json_error(str(e))
     
+    def handle_get_resources(self):
+        """Get current resource usage"""
+        try:
+            stats = resource_monitor.get_all_stats()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(stats).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_get_settings(self):
+        """Get current performance settings"""
+        try:
+            settings = performance_controller.get_current_settings()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(settings).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_switch_device(self):
+        """Switch between CPU and GPU"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            device = data.get('device', 'cpu')
+            result = performance_controller.switch_device(device)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(result).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_configure_resources(self):
+        """Configure resource settings"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            results = {}
+            
+            if 'cpu_threads' in data:
+                results['cpu_threads'] = performance_controller.set_cpu_threads(data['cpu_threads'])
+            
+            if 'memory_limit' in data:
+                results['memory_limit'] = performance_controller.set_memory_limit(data['memory_limit'])
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(results).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
     def log_message(self, format, *args):
         """Custom logging"""
         print(f"[API] {format % args}")
@@ -767,9 +855,14 @@ def start_server(port=5174):
     print(f"   POST /api/sessions/list - List all sessions")
     print(f"   POST /api/sessions/load - Load specific session")
     print(f"   POST /api/sessions/export - Export for training")
+    print(f"   GET  /api/resources/stats - Get resource usage")
+    print(f"   GET  /api/resources/settings - Get performance settings")
+    print(f"   POST /api/resources/switch - Switch CPU/GPU")
+    print(f"   POST /api/resources/configure - Configure resources")
     print(f"\n💾 Session Storage: memory/sessions/")
     print(f"🧠 Memory System: Active")
     print(f"📊 Training Data: memory/training_data/")
+    print(f"🎛️ Resource Monitoring: Active")
     server.serve_forever()
 
 if __name__ == "__main__":

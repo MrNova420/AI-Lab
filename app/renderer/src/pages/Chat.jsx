@@ -7,6 +7,7 @@ function Chat() {
   const [currentResponse, setCurrentResponse] = useState('');
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
+  const [resources, setResources] = useState({cpu: {}, gpu: {}, memory: {}});
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -16,6 +17,22 @@ function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, currentResponse]);
+
+  useEffect(() => {
+    // Update resources every 2 seconds
+    const interval = setInterval(loadResources, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadResources = async () => {
+    try {
+      const response = await fetch('http://localhost:5174/api/resources/stats');
+      const data = await response.json();
+      setResources(data);
+    } catch (err) {
+      // Silent fail
+    }
+  };
 
   useEffect(() => {
     // Listen for streaming tokens
@@ -140,8 +157,26 @@ function Chat() {
           <p className="page-description">Text conversation with AI</p>
         </div>
         
-        {/* Mode Toggles */}
+        {/* Mode Toggles & Live Stats */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {/* Live Resource Stats */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            marginRight: '10px',
+            padding: '6px 12px',
+            backgroundColor: '#1a1a2e',
+            borderRadius: '6px',
+            fontSize: '11px',
+            color: '#888'
+          }}>
+            <span>🖥️ CPU: <strong style={{color: '#4a9eff'}}>{resources.cpu?.usage_percent?.toFixed(0) || '0'}%</strong></span>
+            {resources.gpu?.available && (
+              <span>🎮 GPU: <strong style={{color: '#00ff88'}}>{resources.gpu?.usage_percent?.toFixed(0)}%</strong></span>
+            )}
+            <span>💾 RAM: <strong style={{color: '#ffaa00'}}>{resources.memory?.percent?.toFixed(0) || '0'}%</strong></span>
+          </div>
+
           <button
             onClick={() => setCommanderMode(!commanderMode)}
             style={{
