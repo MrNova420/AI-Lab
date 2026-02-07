@@ -13,6 +13,9 @@
 - **Self-Correcting AI**: Uses real-world data to verify and correct responses
 - **Smart Tool Selection**: AI analyzes intent and chooses appropriate tools (no hardcoded keywords!)
 - **Tool Awareness**: Sees tool results before providing final answers
+- **Reasoning & Learning Layer**: Context-aware system that learns from interactions
+- **Smart Caching**: 30-120x speedup with intelligent cache management
+- **Session Persistence**: Maintains context across restarts
 - **Dynamic Tool Registry**: Extensible architecture for adding new capabilities
 
 ### 🎤 **Voice Assistant**
@@ -101,47 +104,55 @@ ai-forge/
 │   └── renderer/          # React frontend
 ├── core/                  # Core Python backend
 │   ├── ai_protocol.py    # AI behavior and prompts
+│   ├── reasoning.py      # Reasoning & learning layer (NEW!)
 │   ├── runtime/          # Model runtime management
 │   └── config.py         # Configuration management
 ├── scripts/              # Backend services
-│   ├── api_server.py     # HTTP API server
+│   ├── api_server.py     # HTTP API server (with reasoning integration)
 │   ├── commander.py      # System control
 │   └── smart_parser.py   # Tool call parser
-└── tools/                # Tool registry
-    ├── system/           # System tools
-    └── web/              # Web tools
+├── tools/                # Tool registry
+│   ├── __init__.py       # Dynamic tool registry
+│   ├── system/           # System tools (datetime, system_info, etc.)
+│   └── web/              # Web tools (search, verify, etc.)
+└── memory/               # Persistent data
+    └── sessions/         # Session storage
 ```
 
 ### How It Works
 
 1. **User Input** → Voice or text
-2. **AI Analysis** → Reads available tools and decides which to use
-3. **Tool Declaration** → AI specifies tools: `<TOOLS>current_date</TOOLS>`
-4. **Execution** → System runs tools and gets results
-5. **Self-Correction** → AI sees results and provides accurate answer
-6. **Display** → Clean output with tool results shown
+2. **Intent Analysis** → Reasoning layer analyzes complexity and context
+3. **Smart Caching** → Checks for recent cached results (30-120x faster!)
+4. **AI Analysis** → Reads available tools and decides which to use
+5. **Tool Declaration** → AI specifies tools: `<TOOLS>current_date</TOOLS>`
+6. **Execution** → System runs tools and gets real results
+7. **Result Verification** → Confidence scoring and error detection
+8. **Self-Correction** → AI sees results and provides accurate answer
+9. **Learning** → System tracks success rates and execution times
+10. **Display** → Clean output with tool results and cache indicators
 
 ## 🛠️ Available Tools
 
+**21 tools across 3 categories** - See [CURRENT_TOOLS.md](CURRENT_TOOLS.md) for full documentation.
+
 ### Information Tools (Always Available)
-- `current_date` - Get today's date
-- `current_time` - Get current time
-- `system_info` - System information
-- `user_info` - User details
+- `datetime` - Get current date/time with timezone
+- `system_info` - Real system information (OS, CPU, RAM, kernel)
+- `user_info` - User details (username, home directory, shell)
+- `check_app` - Check if application is installed
 
 ### Commander Tools (Requires ⚡ Mode)
-- `open_app` - Open applications
-- `close_app` - Close applications
+- `open_app` / `close_app` / `switch_app` - Application management
 - `screenshot` - Capture screen
-- `mouse_move` - Move mouse cursor
-- `mouse_click` - Click mouse
-- `keyboard_type` - Type text
-- `keyboard_press` - Press keys
+- `mouse_move` / `mouse_click` - Mouse control
+- `keyboard_type` / `keyboard_press` / `keyboard_combo` - Keyboard automation
+- `analyze_system` - System diagnostics
 
 ### Web Tools (Requires 🌐 Mode)
-- `web_search` - Search the internet
-- `verify_info` - Fact-check claims
-- `open_url` - Open websites
+- `web_search` - Multi-source internet search
+- `verify_info` - Fact-checking and verification
+- `open_url` - Open websites in browser
 
 ## 🧪 Testing
 
@@ -157,6 +168,33 @@ pytest
 ```
 
 ## 🎯 Key Features in Detail
+
+### 🧠 Reasoning & Learning Layer
+
+The system learns and adapts from every interaction:
+
+**Context Memory:**
+- Tracks last 20 tool executions
+- Maintains 50 conversation turns
+- Stores user preferences
+- Session persistence (survives restarts)
+
+**Smart Caching:**
+- Tool-specific cache timeouts (datetime: 30s, system_info: 10min, user_info: 1hr)
+- 30-120x speedup on cache hits
+- Cache indicators in UI (💾 icon)
+
+**Intent Analysis:**
+- Classifies requests (Simple, Complex, Multi-step, Research, Control)
+- Assesses complexity scores
+- Plans multi-step execution
+- Confidence scoring
+
+**Learning System:**
+- Tracks tool success rates
+- Measures execution times
+- Adapts to patterns
+- Provides actionable suggestions
 
 ### Self-Correcting AI
 

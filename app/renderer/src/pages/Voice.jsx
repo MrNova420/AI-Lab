@@ -413,7 +413,8 @@ function Voice() {
             message: userMessage, 
             history,
             commander_mode: commanderMode,
-            web_search_mode: webSearchMode
+            web_search_mode: webSearchMode,
+            session_id: 'browser_session'  // Session tracking for reasoning layer
           })
         });
         
@@ -437,7 +438,29 @@ function Voice() {
               const data = JSON.parse(line);
               console.log('🔵 API data:', data.type);
               
-              if (data.type === 'token') {
+              if (data.type === 'reasoning') {
+                // Show reasoning info 🧠
+                console.log('🧠 Reasoning:', {
+                  intent: data.intent,
+                  complexity: data.complexity,
+                  confidence: data.confidence,
+                  cached_count: data.cached_count,
+                  trace: data.trace
+                });
+                
+                // Add visual feedback for reasoning
+                if (data.can_optimize && data.cached_count > 0) {
+                  const cacheInfo = `\n⚡ Using ${data.cached_count} cached result(s) for faster response!\n`;
+                  fullResponse += cacheInfo;
+                  setResponse(fullResponse);
+                }
+                
+                if (data.trace && data.trace.length > 0) {
+                  console.log('🧠 Reasoning trace:');
+                  data.trace.forEach(t => console.log(`   ${t}`));
+                }
+                
+              } else if (data.type === 'token') {
                 fullResponse += data.token;
                 setResponse(fullResponse);
                 
@@ -959,7 +982,15 @@ function Voice() {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span>{msg.role === 'user' ? '👤 You' : '🤖 Assistant'}</span>
+                <span>
+                  {msg.role === 'user' ? '👤 You' : 
+                    <>
+                      🤖 Assistant
+                      {msg.modes?.commander && <span style={{marginLeft: '8px', color: '#ff4444', fontSize: '0.85em'}}>⚡CMD</span>}
+                      {msg.modes?.webSearch && <span style={{marginLeft: '8px', color: '#44ff44', fontSize: '0.85em'}}>🌐WEB</span>}
+                    </>
+                  }
+                </span>
                 <button
                   onClick={(e) => {
                     navigator.clipboard.writeText(msg.content);

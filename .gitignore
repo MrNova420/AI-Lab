@@ -22,7 +22,12 @@ models/*
 
 # Exports
 exports/
-memory/
+
+# Memory & Sessions (user-specific data)
+memory/sessions/
+memory/vector_db/
+memory/embeddings/
+!memory/.gitkeep
 
 # IDE
 .vscode/

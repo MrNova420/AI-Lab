@@ -6,96 +6,93 @@ All AI capabilities are registered here - AI analyzes and decides when to use th
 # Tool categories
 TOOLS = {
     "system": {
-        "current_date": {
-            "module": "tools.system.info",
-            "function": "get_current_date",
-            "description": "Get the current date",
-            "params": {},
-            "requires_commander": False
-        },
-        "current_time": {
-            "module": "tools.system.info",
-            "function": "get_current_time",
-            "description": "Get the current time",
-            "params": {},
-            "requires_commander": False
-        },
-        "current_datetime": {
+        "datetime": {
             "module": "tools.system.info",
             "function": "get_current_datetime",
-            "description": "Get the current date and time",
+            "description": "Get current date AND time together (use this for date/time questions)",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": False  # Simple tool - just append result
         },
         "system_info": {
             "module": "tools.system.info",
             "function": "get_system_info",
-            "description": "Get system information (OS, version, architecture)",
+            "description": "Get REAL system information (OS, CPU, RAM, kernel)",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": True  # Complex - AI should see and verify
         },
         "user_info": {
             "module": "tools.system.info",
             "function": "get_user_info",
             "description": "Get current user information",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": False
         },
         "screenshot": {
             "module": "tools.system.screenshot",
             "function": "take_screenshot",
             "description": "Capture a screenshot of the screen",
             "params": {},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "open_app": {
             "module": "tools.system.apps",
             "function": "open_application",
             "description": "Open a desktop application",
             "params": {"app": "string"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "close_app": {
             "module": "tools.system.apps",
             "function": "close_application",
             "description": "Close a running application",
             "params": {"app": "string"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "analyze_system": {
             "module": "tools.system.analyzer",
             "function": "analyze_system",
             "description": "Get comprehensive system information (OS, version, architecture, etc.)",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": True  # Complex analysis
         },
         "check_running": {
             "module": "tools.system.analyzer",
             "function": "check_what_is_running",
             "description": "See what processes are currently running on the system",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": True  # Complex data
         },
         "check_app": {
             "module": "tools.system.analyzer",
             "function": "check_if_app_exists",
             "description": "Check if a specific application is installed",
             "params": {"app_name": "string"},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": False
         },
         "list_apps": {
             "module": "tools.system.analyzer",
             "function": "get_available_apps",
             "description": "Get list of commonly installed applications",
             "params": {},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": True  # Complex list
         },
         "analyze_result": {
             "module": "tools.system.analyzer",
             "function": "analyze_result",
             "description": "Analyze the result of a previous command (success/failure, error classification, suggestions)",
             "params": {"command": "string", "result": "dict"},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": True  # Needs analysis
         }
     },
     "web": {
@@ -104,7 +101,8 @@ TOOLS = {
             "function": "open_url",
             "description": "Open a URL in the browser",
             "params": {"url": "string"},
-            "requires_commander": False
+            "requires_commander": False,
+            "requires_verification": False
         },
         "web_search": {
             "module": "tools.web.search",
@@ -112,7 +110,8 @@ TOOLS = {
             "description": "Search the web using multiple sources (DuckDuckGo, etc). Returns summarized results with titles, URLs, and snippets. Use quick=True for fast results.",
             "params": {"query": "string", "quick": "bool"},
             "requires_commander": False,
-            "requires_web": True
+            "requires_web": True,
+            "requires_verification": True  # Web results need verification
         },
         "verify_info": {
             "module": "tools.web.search",
@@ -120,7 +119,8 @@ TOOLS = {
             "description": "Verify a claim by searching multiple sources and checking consistency. Best for fact-checking.",
             "params": {"query": "string", "claim": "string"},
             "requires_commander": False,
-            "requires_web": True
+            "requires_web": True,
+            "requires_verification": True
         },
         "deep_search": {
             "module": "tools.web.search",
@@ -128,7 +128,8 @@ TOOLS = {
             "description": "Deep search across multiple sources with aggregation and verification. Best for research and comprehensive information gathering.",
             "params": {"query": "string"},
             "requires_commander": False,
-            "requires_web": True
+            "requires_web": True,
+            "requires_verification": True
         }
     },
     "input": {
@@ -137,28 +138,32 @@ TOOLS = {
             "function": "move_mouse",
             "description": "Move the mouse cursor to coordinates",
             "params": {"x": "int", "y": "int"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "mouse_click": {
             "module": "tools.input.mouse",
             "function": "click_mouse",
             "description": "Click the mouse button",
             "params": {"button": "string", "double": "bool"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "keyboard_type": {
             "module": "tools.input.keyboard",
             "function": "type_text",
             "description": "Type text using keyboard",
             "params": {"text": "string"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         },
         "keyboard_press": {
             "module": "tools.input.keyboard",
             "function": "press_key",
             "description": "Press a special key",
             "params": {"key": "string"},
-            "requires_commander": True
+            "requires_commander": True,
+            "requires_verification": False
         }
     }
 }

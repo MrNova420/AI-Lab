@@ -219,7 +219,15 @@ function Chat() {
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <span>{msg.role === 'user' ? '👤 You' : '🤖 Assistant'}</span>
+              <span>
+                {msg.role === 'user' ? '👤 You' : 
+                  <>
+                    🤖 Assistant
+                    {msg.modes?.commander && <span style={{marginLeft: '8px', color: '#ff4444', fontSize: '0.85em'}}>⚡CMD</span>}
+                    {msg.modes?.webSearch && <span style={{marginLeft: '8px', color: '#44ff44', fontSize: '0.85em'}}>🌐WEB</span>}
+                  </>
+                }
+              </span>
               <button
                 onClick={(e) => {
                   navigator.clipboard.writeText(msg.content);
