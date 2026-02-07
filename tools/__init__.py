@@ -107,7 +107,7 @@ TOOLS = {
         "web_search": {
             "module": "tools.web.advanced_search",
             "function": "advanced_web_search",
-            "description": "🌐 ADVANCED: Multi-source web search across Google, Bing, DuckDuckGo, and Brave simultaneously. Fast parallel search with intelligent ranking and deduplication. Always use this for web searches - provides most up-to-date, accurate results from all major search engines.",
+            "description": "🌐 ADVANCED WEB SEARCH: Multi-source search with intelligent prioritization. PRIMARY: 🌟 Grokipedia (newest, best knowledge base - better than Wikipedia!), SECONDARY: 📚 Wikipedia (reliable factual), Then: 🔍 Google, 📖 Wikimedia, Bing. Searches all sources in parallel (3-8 sec). Returns ranked results from knowledge bases first, then search engines. Use this for ANY web search - most comprehensive, up-to-date, and reliable!",
             "params": {"query": "string", "max_results": "int"},
             "requires_commander": False,
             "requires_web": True,
@@ -116,7 +116,7 @@ TOOLS = {
         "deep_research": {
             "module": "tools.web.advanced_search",
             "function": "deep_web_research",
-            "description": "🔬 DEEP RESEARCH: Comprehensive research with web scraping and analysis. Searches multiple sources, scrapes top result pages, extracts full content, and provides quality-scored analysis. Best for in-depth research topics requiring detailed information.",
+            "description": "🔬 DEEP RESEARCH: Comprehensive 5-step research process: (1) Search Grokipedia+Wikipedia+Google+others, (2) Analyze and rank results, (3) Scrape top pages for full content, (4) Verify facts and cross-reference, (5) Generate intelligent summary with quality score. Prioritizes Grokipedia (best knowledge base) first. Best for in-depth research requiring detailed, verified information from multiple high-quality sources.",
             "params": {"query": "string", "max_results": "int", "scrape_top": "int"},
             "requires_commander": False,
             "requires_web": True,
