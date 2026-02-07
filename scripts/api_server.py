@@ -21,6 +21,12 @@ from core.reasoning import (
     get_context, get_reasoning, get_verifier,
     init_reasoning_layer
 )
+from core.logging_system import LoggingSystem
+from core.memory_system import AdvancedMemory
+
+# Initialize logging and memory
+logging_system = LoggingSystem()
+memory_system = AdvancedMemory()
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -60,6 +66,16 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_commander_parse()
         elif path == '/api/commander/execute':
             self.handle_commander_execute()
+        elif path == '/api/sessions/start':
+            self.handle_start_session()
+        elif path == '/api/sessions/save':
+            self.handle_save_session()
+        elif path == '/api/sessions/list':
+            self.handle_list_sessions()
+        elif path == '/api/sessions/load':
+            self.handle_load_session()
+        elif path == '/api/sessions/export':
+            self.handle_export_session()
         else:
             self.send_error(404)
     
@@ -284,6 +300,19 @@ class APIHandler(BaseHTTPRequestHandler):
             # Add user message to history
             history.append({"role": "user", "content": message})
             
+            # Log user message to session
+            logging_system.log_message(
+                role="user",
+                content=message,
+                metadata={
+                    "commander_mode": commander_mode,
+                    "web_search_mode": web_search_mode
+                }
+            )
+            
+            # Store in memory system
+            memory_system.short_term.add(f"User: {message}")
+            
             # Send response headers
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -474,6 +503,23 @@ class APIHandler(BaseHTTPRequestHandler):
                 # Save session periodically
                 context_mem.save_session(session_id)
             
+            # Log AI response to session
+            logging_system.log_message(
+                role="assistant",
+                content=full_response,
+                metadata={
+                    "commander_mode": commander_mode,
+                    "web_search_mode": web_search_mode
+                }
+            )
+            
+            # Store in memory system
+            memory_system.short_term.add(f"Assistant: {full_response}")
+            
+            # Auto-save session every 10 messages
+            if len(logging_system.current_session.get('messages', [])) % 10 == 0:
+                logging_system.save_session()
+            
             # Send done message
             done = json.dumps({"type": "done", "full_response": full_response}) + "\n"
             
@@ -559,6 +605,148 @@ class APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({"error": message}).encode())
     
+    def handle_start_session(self):
+        """Start a new chat session"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            user_name = data.get('user_name', 'User')
+            metadata = data.get('metadata', {})
+            
+            session_id = logging_system.start_session(user_name, metadata)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'session_id': session_id,
+                'started_at': logging_system.current_session['started_at']
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_save_session(self):
+        """Save current session"""
+        try:
+            logging_system.save_session()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({'success': True}).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_list_sessions(self):
+        """List all saved sessions"""
+        try:
+            sessions_dir = logging_system.base_path / "sessions"
+            sessions = []
+            
+            if sessions_dir.exists():
+                for month_dir in sorted(sessions_dir.iterdir(), reverse=True):
+                    if month_dir.is_dir():
+                        for session_file in sorted(month_dir.glob("*.json"), reverse=True):
+                            try:
+                                import json
+                                session_data = json.loads(session_file.read_text())
+                                sessions.append({
+                                    'session_id': session_data['session_id'],
+                                    'started_at': session_data['started_at'],
+                                    'user_name': session_data.get('user_name', 'Unknown'),
+                                    'message_count': len(session_data.get('messages', [])),
+                                    'file_path': str(session_file)
+                                })
+                            except:
+                                continue
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({'sessions': sessions[:50]}).encode())  # Limit to 50
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_load_session(self):
+        """Load a specific session"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            session_id = data.get('session_id')
+            if not session_id:
+                self.send_json_error("No session_id provided")
+                return
+            
+            # Find session file
+            sessions_dir = logging_system.base_path / "sessions"
+            session_file = None
+            
+            for month_dir in sessions_dir.iterdir():
+                if month_dir.is_dir():
+                    potential_file = month_dir / f"{session_id}.json"
+                    if potential_file.exists():
+                        session_file = potential_file
+                        break
+            
+            if not session_file:
+                self.send_json_error("Session not found")
+                return
+            
+            session_data = json.loads(session_file.read_text())
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(session_data).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_export_session(self):
+        """Export session for training"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            export_format = data.get('format', 'jsonl')
+            session_id = data.get('session_id')
+            
+            if session_id:
+                # Export specific session
+                result = logging_system.export_session(session_id, export_format)
+            else:
+                # Export all
+                result = logging_system.export_for_training(export_format)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'export_path': result
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
     def log_message(self, format, *args):
         """Custom logging"""
         print(f"[API] {format % args}")
@@ -576,6 +764,14 @@ def start_server(port=5174):
     print(f"   POST /api/models/remove - Remove model")
     print(f"   POST /api/commander/parse - Parse command (preview)")
     print(f"   POST /api/commander/execute - Execute command")
+    print(f"   POST /api/sessions/start - Start new session")
+    print(f"   POST /api/sessions/save - Save current session")
+    print(f"   POST /api/sessions/list - List all sessions")
+    print(f"   POST /api/sessions/load - Load specific session")
+    print(f"   POST /api/sessions/export - Export for training")
+    print(f"\n💾 Session Storage: memory/sessions/")
+    print(f"🧠 Memory System: Active")
+    print(f"📊 Training Data: memory/training_data/")
     server.serve_forever()
 
 if __name__ == "__main__":
