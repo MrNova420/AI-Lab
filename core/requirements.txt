@@ -1,4 +1,7 @@
 requests
+aiohttp
+beautifulsoup4
+lxml
 prompt_toolkit
 pyaudio
 sounddevice

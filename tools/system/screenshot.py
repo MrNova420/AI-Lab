@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.commander import Commander
+from core.platform_detection import check_feature_available
 
 # Global commander instance
 _commander = None
@@ -25,6 +26,18 @@ def get_commander():
     return _commander
 
 
+def _check_screenshot_available():
+    """Check if screenshot features are available on this platform"""
+    available, reason = check_feature_available('screenshot')
+    if not available:
+        return {
+            'success': False,
+            'message': f"Screenshot not available: {reason}",
+            'error': 'PLATFORM_UNAVAILABLE'
+        }
+    return None
+
+
 def take_screenshot():
     """
     Capture a screenshot of the screen
@@ -32,6 +45,11 @@ def take_screenshot():
     Returns:
         Dict with success status, message, and file path
     """
+    # Check platform availability
+    unavailable = _check_screenshot_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.screenshot()
@@ -46,12 +64,14 @@ def take_screenshot():
         else:
             return {
                 'success': False,
-                'message': result.get('error', 'Failed to capture screenshot')
+                'message': result.get('error', 'Failed to capture screenshot'),
+                'error': 'EXECUTION_ERROR'
             }
     except Exception as e:
         return {
             'success': False,
-            'message': f"Error capturing screenshot: {str(e)}"
+            'message': f"Error capturing screenshot: {str(e)}",
+            'error': 'EXECUTION_ERROR'
         }
 
 
@@ -68,6 +88,11 @@ def take_region_screenshot(x, y, width, height):
     Returns:
         Dict with success status, message, and file path
     """
+    # Check platform availability
+    unavailable = _check_screenshot_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.screenshot_region(x, y, width, height)
@@ -83,10 +108,12 @@ def take_region_screenshot(x, y, width, height):
         else:
             return {
                 'success': False,
-                'message': result.get('error', 'Failed to capture region screenshot')
+                'message': result.get('error', 'Failed to capture region screenshot'),
+                'error': 'EXECUTION_ERROR'
             }
     except Exception as e:
         return {
             'success': False,
-            'message': f"Error capturing region screenshot: {str(e)}"
+            'message': f"Error capturing region screenshot: {str(e)}",
+            'error': 'EXECUTION_ERROR'
         }

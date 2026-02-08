@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.commander import Commander
+from core.platform_detection import check_feature_available
 
 # Global commander instance
 _commander = None
@@ -24,6 +25,18 @@ def get_commander():
     return _commander
 
 
+def _check_commander_available():
+    """Check if commander features are available on this platform"""
+    available, reason = check_feature_available('commander')
+    if not available:
+        return {
+            'success': False,
+            'message': f"Commander mode not available: {reason}",
+            'error': 'PLATFORM_UNAVAILABLE'
+        }
+    return None
+
+
 def open_application(app):
     """
     Open a desktop application
@@ -34,6 +47,11 @@ def open_application(app):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.open_app(app)
@@ -54,7 +72,8 @@ def open_application(app):
         return {
             'success': False,
             'message': f"Error opening {app}: {str(e)}",
-            'app': app
+            'app': app,
+            'error': 'EXECUTION_ERROR'
         }
 
 
@@ -68,6 +87,11 @@ def close_application(app):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.close_app(app)
@@ -88,7 +112,8 @@ def close_application(app):
         return {
             'success': False,
             'message': f"Error closing {app}: {str(e)}",
-            'app': app
+            'app': app,
+            'error': 'EXECUTION_ERROR'
         }
 
 
@@ -102,6 +127,11 @@ def switch_to_application(app):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.switch_app(app)
@@ -122,5 +152,6 @@ def switch_to_application(app):
         return {
             'success': False,
             'message': f"Error switching to {app}: {str(e)}",
-            'app': app
+            'app': app,
+            'error': 'EXECUTION_ERROR'
         }
