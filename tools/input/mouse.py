@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.commander import Commander
+from core.platform_detection import check_feature_available
 
 # Global commander instance
 _commander = None
@@ -22,6 +23,20 @@ def get_commander():
     if _commander is None:
         _commander = Commander()
     return _commander
+
+
+
+
+def _check_commander_available():
+    """Check if commander features are available on this platform"""
+    available, reason = check_feature_available('commander')
+    if not available:
+        return {
+            'success': False,
+            'message': f"Commander mode not available: {reason}",
+            'error': 'PLATFORM_UNAVAILABLE'
+        }
+    return None
 
 
 def move_mouse(x, y):
@@ -35,6 +50,11 @@ def move_mouse(x, y):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.mouse_move(x, y)
@@ -69,6 +89,11 @@ def click_mouse(button='left', double=False):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.mouse_click(button, double)
@@ -100,6 +125,11 @@ def get_mouse_position():
     Returns:
         Dict with success status, message, and coordinates
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.get_mouse_position()

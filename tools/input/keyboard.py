@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.commander import Commander
+from core.platform_detection import check_feature_available
 
 # Global commander instance
 _commander = None
@@ -24,6 +25,20 @@ def get_commander():
     return _commander
 
 
+
+
+def _check_commander_available():
+    """Check if commander features are available on this platform"""
+    available, reason = check_feature_available('commander')
+    if not available:
+        return {
+            'success': False,
+            'message': f"Commander mode not available: {reason}",
+            'error': 'PLATFORM_UNAVAILABLE'
+        }
+    return None
+
+
 def type_text(text):
     """
     Type text using keyboard
@@ -34,6 +49,11 @@ def type_text(text):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.keyboard_type(text)
@@ -66,6 +86,11 @@ def press_key(key):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.keyboard_press(key)
@@ -98,6 +123,11 @@ def press_combo(keys):
     Returns:
         Dict with success status and message
     """
+    # Check platform availability
+    unavailable = _check_commander_available()
+    if unavailable:
+        return unavailable
+    
     try:
         commander = get_commander()
         result = commander.keyboard_combo(keys)
