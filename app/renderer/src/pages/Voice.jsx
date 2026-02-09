@@ -2,13 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import BrowserCommander from './commander-browser.js';
 import { trackToolsFromResponse } from '../utils/toolTracking';
-import { 
-  saveModePreferences, 
-  loadModePreferences, 
-  saveVoiceHistory, 
-  loadVoiceHistory, 
-  clearVoiceHistory 
-} from '../utils/statePersistence';
+import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
+import sessionManager from '../utils/sessionManager';
 
 function Voice() {
   const [isRecording, setIsRecording] = useState(false);
@@ -22,6 +17,9 @@ function Voice() {
   const [textOnlyMode, setTextOnlyMode] = useState(false);
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [showSessionList, setShowSessionList] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -54,19 +52,28 @@ function Voice() {
     };
   }, []);
 
-  // Load preferences and history on mount
+  // Initialize session on mount
+  const sessionInitialized = useRef(false);
   useEffect(() => {
-    // Load mode preferences
-    const prefs = loadModePreferences();
-    setCommanderMode(prefs.commanderMode);
-    setWebSearchMode(prefs.webSearchMode);
+    const initializeSession = async () => {
+      if (sessionInitialized.current) return;
+      sessionInitialized.current = true;
+      
+      const prefs = loadModePreferences();
+      setCommanderMode(prefs.commanderMode);
+      setWebSearchMode(prefs.webSearchMode);
+      
+      // Start a new voice session
+      try {
+        const sessionId = await sessionManager.startNewSession('User', { type: 'voice' });
+        setCurrentSessionId(sessionId);
+        console.log(`🎤 Started voice session: ${sessionId}`);
+      } catch (error) {
+        console.error('Voice session initialization error:', error);
+      }
+    };
     
-    // Load voice history if available
-    const history = loadVoiceHistory();
-    if (history.length > 0) {
-      setMessages(history);
-      console.log(`📥 Restored ${history.length} voice messages from history`);
-    }
+    initializeSession();
   }, []);
 
   // Save mode preferences whenever they change
@@ -74,12 +81,15 @@ function Voice() {
     saveModePreferences(commanderMode, webSearchMode);
   }, [commanderMode, webSearchMode]);
 
-  // Save voice history whenever messages change
+  // Sync messages with session manager
   useEffect(() => {
-    if (messages.length > 0) {
-      saveVoiceHistory(messages);
+    if (messages.length > 0 && currentSessionId) {
+      const session = sessionManager.getCurrentSession();
+      if (session && session.session_id === currentSessionId) {
+        session.messages = messages;
+      }
     }
-  }, [messages]);
+  }, [messages, currentSessionId]);
 
   // Load text-only preference from localStorage
   useEffect(() => {
@@ -364,6 +374,11 @@ function Voice() {
         // DON'T add user message here - let getAIResponse handle it
         // This prevents duplicates when Commander mode or normal chat adds the message
         
+        // Add user message to session manager
+        if (currentSessionId && cleanTranscript) {
+          sessionManager.addMessage('user', cleanTranscript);
+        }
+        
         // Send to AI
         console.log('📤 Sending to AI/Commander:', cleanTranscript);
         setIsTranscribing(true);
@@ -588,6 +603,16 @@ function Voice() {
         }
         
         setMessages(prev => [...prev, assistantMessage]);
+        
+        // Add to session manager
+        if (currentSessionId) {
+          sessionManager.addMessage('assistant', fullResponse, {
+            modes: assistantMessage.modes,
+            hasTools: assistantMessage.hasTools,
+            timestamp: assistantMessage.timestamp
+          });
+        }
+        
         console.log('✅ AI response added to messages with metadata');
       }
       
@@ -697,15 +722,28 @@ function Voice() {
     }
   };
 
-  const clearConversation = () => {
-    setMessages([]);
-    setTranscript('');
-    setResponse('');
-    setError('');
-    lastUserMessageRef.current = '';
-    lastAIMessageRef.current = '';
-    clearVoiceHistory(); // Clear from localStorage too
-    console.log('🗑️ Voice conversation cleared');
+  const clearConversation = async () => {
+    // Start new voice session
+    try {
+      const sessionId = await sessionManager.startNewSession('User', { type: 'voice' });
+      setCurrentSessionId(sessionId);
+      setMessages([]);
+      setTranscript('');
+      setResponse('');
+      setError('');
+      lastUserMessageRef.current = '';
+      lastAIMessageRef.current = '';
+      console.log('✨ New voice session started');
+    } catch (error) {
+      console.error('Failed to start new voice session:', error);
+      // Fallback
+      setMessages([]);
+      setTranscript('');
+      setResponse('');
+      setError('');
+      lastUserMessageRef.current = '';
+      lastAIMessageRef.current = '';
+    }
   };
 
   return (
