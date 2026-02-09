@@ -533,10 +533,25 @@ function Voice() {
       // Update ref
       lastAIMessageRef.current = fullResponse;
       
-      // Add to messages
+      // Add to messages with mode indicators and tool detection
       if (fullResponse.trim().length > 0) {
-        setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
-        console.log('✅ AI response added to messages');
+        const assistantMessage = {
+          role: 'assistant',
+          content: fullResponse,
+          modes: {
+            commander: commanderMode,
+            webSearch: webSearchMode
+          },
+          timestamp: new Date().toISOString()
+        };
+        
+        // Check if response contains tool executions
+        if (fullResponse.includes('🛠️')) {
+          assistantMessage.hasTools = true;
+        }
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        console.log('✅ AI response added to messages with metadata');
       }
       
       // If we didn't speak anything yet and not in text-only mode, speak the full response
@@ -986,8 +1001,39 @@ function Voice() {
                   {msg.role === 'user' ? '👤 You' : 
                     <>
                       🤖 Assistant
-                      {msg.modes?.commander && <span style={{marginLeft: '8px', color: '#ff4444', fontSize: '0.85em'}}>⚡CMD</span>}
-                      {msg.modes?.webSearch && <span style={{marginLeft: '8px', color: '#44ff44', fontSize: '0.85em'}}>🌐WEB</span>}
+                      {msg.hasTools && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                          borderRadius: '4px',
+                          color: '#ffa500',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>🛠️ TOOLS</span>
+                      )}
+                      {msg.modes?.commander && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(255, 68, 68, 0.2)',
+                          borderRadius: '4px',
+                          color: '#ff4444',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>⚡ CMD</span>
+                      )}
+                      {msg.modes?.webSearch && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(68, 255, 68, 0.2)',
+                          borderRadius: '4px',
+                          color: '#44ff44',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>🌐 WEB</span>
+                      )}
                     </>
                   }
                 </span>
