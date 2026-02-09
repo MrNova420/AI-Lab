@@ -109,7 +109,7 @@ function Chat({ messages, setMessages, input, setInput }) {
       };
       
       // Check if response contains tool executions
-      if (fullResponse && fullResponse.includes('🛠️')) {
+      if (assistantMessage.content && assistantMessage.content.includes('🛠️')) {
         assistantMessage.hasTools = true;
       }
       

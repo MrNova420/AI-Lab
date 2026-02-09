@@ -78,7 +78,7 @@ The AI-Lab project now has a **fully functional intelligent tool execution syste
 | `scripts/smart_parser.py` | Parses `<TOOLS>...</TOOLS>` declarations from AI | ✅ Working |
 | `scripts/api_server.py` | HTTP API - **REWRITTEN** to use tool system | ✅ Fixed |
 | `core/ai_protocol.py` | System prompts with tool descriptions | ✅ Working |
-| `tools/__init__.py` | Tool registry (21 tools) | ✅ Working |
+| `tools/__init__.py` | Tool registry (28 tools) | ✅ Working |
 
 ### Tool Modules (NEW)
 

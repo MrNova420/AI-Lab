@@ -341,21 +341,28 @@ class APIHandler(BaseHTTPRequestHandler):
             
             # Phase 1: Get AI response (may contain tool declarations)
             ai_response = ""
+            full_response = ""  # Track complete response for frontend
             for token in driver.generate(chat_history, stream=True):
                 ai_response += token
-                # Stream tokens to user in real-time
-                chunk = json.dumps({"type": "token", "token": token}) + "\n"
-                try:
-                    self.wfile.write(chunk.encode())
-                    self.wfile.flush()
-                except BrokenPipeError:
-                    break
+                # Don't stream raw tokens yet - wait to check for tools
             
             # Phase 2: Check for tool declarations
             tool_declarations = parse_tool_declarations(ai_response)
             
             if tool_declarations:
                 print(f"🛠️ AI requested {len(tool_declarations)} tools")
+                
+                # Strip tool markup and stream clean response
+                clean_ai_response = remove_tool_declarations(ai_response)
+                if clean_ai_response.strip():
+                    for char in clean_ai_response:
+                        chunk = json.dumps({"type": "token", "token": char}) + "\n"
+                        try:
+                            self.wfile.write(chunk.encode())
+                            self.wfile.flush()
+                        except BrokenPipeError:
+                            pass
+                    full_response += clean_ai_response
                 
                 # Execute tools
                 tool_results = tool_executor.execute_tools(tool_declarations)
@@ -369,10 +376,10 @@ class APIHandler(BaseHTTPRequestHandler):
                         self.wfile.flush()
                     except BrokenPipeError:
                         pass
+                    full_response += f"\n{user_results}\n"
                 
                 # Phase 3: Give AI the tool results for final response
                 ai_results = tool_executor.format_results(tool_results)
-                clean_ai_response = remove_tool_declarations(ai_response)
                 
                 # Add tool results to history and ask AI to provide final answer
                 follow_up = f"""Previous AI response: {clean_ai_response}
@@ -392,6 +399,7 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                     self.wfile.flush()
                 except BrokenPipeError:
                     pass
+                full_response += final_intro
                 
                 for token in driver.generate(chat_history, stream=True):
                     chunk = json.dumps({"type": "token", "token": token}) + "\n"
@@ -400,14 +408,26 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                         self.wfile.flush()
                     except BrokenPipeError:
                         break
+                    full_response += token
+            else:
+                # No tools - stream response normally
+                for char in ai_response:
+                    chunk = json.dumps({"type": "token", "token": char}) + "\n"
+                    try:
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                    except BrokenPipeError:
+                        break
+                full_response = ai_response
             
-            # Send done signal
-            done_chunk = json.dumps({"type": "done"}) + "\n"
+            # Send done signal with full response
+            done_chunk = json.dumps({"type": "done", "full_response": full_response}) + "\n"
             try:
                 self.wfile.write(done_chunk.encode())
                 self.wfile.flush()
             except BrokenPipeError:
-                pass
+                # Client disconnected; stop further processing for this request.
+                return
             
             print(f"✅ Chat complete")
             

@@ -120,7 +120,7 @@ def process_info(pid):
         try:
             import datetime
             info['created'] = datetime.datetime.fromtimestamp(proc.create_time()).isoformat()
-        except:
+        except Exception:
             info['created'] = 'N/A'
         
         return info
@@ -171,10 +171,11 @@ def find_process(name):
         
         for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
             try:
-                if name_lower in proc.info['name'].lower():
+                proc_name = proc.info.get('name') or ''
+                if name_lower in proc_name.lower():
                     matches.append({
                         'pid': proc.info['pid'],
-                        'name': proc.info['name'],
+                        'name': proc_name,
                         'cpu': round(proc.info.get('cpu_percent', 0), 1),
                         'memory': round(proc.info.get('memory_percent', 0), 1)
                     })

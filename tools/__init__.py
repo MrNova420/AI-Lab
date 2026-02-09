@@ -190,7 +190,7 @@ TOOLS = {
             "function": "read_file",
             "description": "📖 READ FILE: Read contents of a text file. Max 10MB. Returns file content, size, and line count.",
             "params": {"path": "string"},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": True
         },
         "write_file": {
@@ -206,7 +206,7 @@ TOOLS = {
             "function": "list_files",
             "description": "📁 LIST FILES: List all files and directories in a path. Shows names, sizes, and timestamps.",
             "params": {"directory": "string"},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": True
         },
         "file_info": {
@@ -214,7 +214,7 @@ TOOLS = {
             "function": "file_info",
             "description": "ℹ️ FILE INFO: Get detailed information about a file (size, dates, permissions, line count).",
             "params": {"path": "string"},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": False
         }
     },
@@ -224,7 +224,7 @@ TOOLS = {
             "function": "list_processes",
             "description": "📊 LIST PROCESSES: Show running processes with CPU and memory usage. Returns top 50 processes.",
             "params": {},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": False
         },
         "process_info": {
@@ -232,7 +232,7 @@ TOOLS = {
             "function": "process_info",
             "description": "🔍 PROCESS INFO: Get detailed info about a specific process by PID (CPU, memory, threads, etc.).",
             "params": {"pid": "int"},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": False
         },
         "find_process": {
@@ -240,7 +240,7 @@ TOOLS = {
             "function": "find_process",
             "description": "🔎 FIND PROCESS: Search for processes by name (case-insensitive). Returns matching PIDs.",
             "params": {"name": "string"},
-            "requires_commander": False,
+            "requires_commander": True,
             "requires_verification": False
         }
     }

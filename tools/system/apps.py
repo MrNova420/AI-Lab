@@ -134,7 +134,7 @@ def switch_to_application(app):
     
     try:
         commander = get_commander()
-        result = commander.switch_app(app)
+        result = commander.focus_window(app)
         
         if result.get('success'):
             return {

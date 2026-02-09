@@ -4,7 +4,6 @@ File Operations Tools
 Read, write, list, and manage files
 """
 
-import os
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -12,6 +11,29 @@ from datetime import datetime
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _is_path_safe(file_path):
+    """
+    Check if a path is within the project root directory.
+    
+    Args:
+        file_path: Resolved Path object
+        
+    Returns:
+        Tuple of (is_safe: bool, error_dict: dict or None)
+    """
+    try:
+        # Ensure the path is within PROJECT_ROOT
+        file_path.relative_to(PROJECT_ROOT)
+        return True, None
+    except ValueError:
+        # Path is outside PROJECT_ROOT
+        return False, {
+            'success': False,
+            'message': f"Access denied: Path is outside project directory",
+            'error': 'PATH_ACCESS_DENIED'
+        }
 
 
 def read_file(path):
@@ -26,6 +48,11 @@ def read_file(path):
     """
     try:
         file_path = Path(path).expanduser().resolve()
+        
+        # Security check: ensure path is within project root
+        is_safe, error = _is_path_safe(file_path)
+        if not is_safe:
+            return error
         
         # Check if file exists
         if not file_path.exists():
@@ -104,6 +131,11 @@ def write_file(path, content):
     try:
         file_path = Path(path).expanduser().resolve()
         
+        # Security check: ensure path is within project root
+        is_safe, error = _is_path_safe(file_path)
+        if not is_safe:
+            return error
+        
         # Create parent directories if they don't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -146,6 +178,11 @@ def list_files(directory="."):
     """
     try:
         dir_path = Path(directory).expanduser().resolve()
+        
+        # Security check: ensure path is within project root
+        is_safe, error = _is_path_safe(dir_path)
+        if not is_safe:
+            return error
         
         # Check if directory exists
         if not dir_path.exists():
@@ -191,8 +228,8 @@ def list_files(directory="."):
                         'modified': modified,
                         'path': str(item)
                     })
-                except:
-                    # Skip files we can't stat
+                except OSError:
+                    # Skip files we can't stat (e.g., due to permission or race conditions)
                     continue
         
         return {
@@ -232,6 +269,11 @@ def file_info(path):
     try:
         file_path = Path(path).expanduser().resolve()
         
+        # Security check: ensure path is within project root
+        is_safe, error = _is_path_safe(file_path)
+        if not is_safe:
+            return error
+        
         # Check if path exists
         if not file_path.exists():
             return {
@@ -262,8 +304,9 @@ def file_info(path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     lines = sum(1 for _ in f)
                 info['lines'] = lines
-            except:
-                pass  # Skip if not a text file
+            except (OSError, UnicodeDecodeError):
+                # Skip if not a readable text file or if an I/O error occurs
+                pass
         
         return info
         

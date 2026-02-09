@@ -8,6 +8,7 @@ sounddevice
 numpy
 scipy
 filelock
+psutil
 pytest
 requests-mock
 pytest-cov

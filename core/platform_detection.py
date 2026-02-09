@@ -5,9 +5,7 @@ Detects OS and provides appropriate implementations
 """
 
 import platform
-import sys
 import subprocess
-from pathlib import Path
 
 
 class PlatformInfo:
@@ -31,7 +29,7 @@ class PlatformInfo:
             with open('/proc/version', 'r') as f:
                 version = f.read().lower()
                 return 'microsoft' in version or 'wsl' in version
-        except:
+        except (OSError, IOError):
             return False
     
     def has_tool(self, tool_name):
@@ -41,7 +39,7 @@ class PlatformInfo:
                                   capture_output=True, 
                                   timeout=1)
             return result.returncode == 0
-        except:
+        except (subprocess.TimeoutExpired, OSError, FileNotFoundError):
             return False
     
     def get_capabilities(self):

@@ -130,7 +130,7 @@ def press_combo(keys):
     
     try:
         commander = get_commander()
-        result = commander.keyboard_combo(keys)
+        result = commander.keyboard_shortcut(keys)
         
         if result.get('success'):
             combo_str = '+'.join(keys)

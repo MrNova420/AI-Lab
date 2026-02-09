@@ -27,7 +27,7 @@ The core AI tool execution system has been completely rewritten and is now **ful
 **Key Features:**
 - 🧠 AI reads tool registry and decides which tools to use
 - 🔐 Permission system prevents unsafe tool execution
-- 🛠️ All 21 tools now properly functional
+- 🛠️ All tools in the registry are now properly functional
 - 🧪 Full test suite with integration tests
 - 📖 Complete architecture documentation
 
