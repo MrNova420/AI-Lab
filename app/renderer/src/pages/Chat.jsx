@@ -1,32 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { trackToolsFromResponse } from '../utils/toolTracking';
-import { 
-  saveModePreferences, 
-  loadModePreferences, 
-  saveChatHistory, 
-  loadChatHistory, 
-  clearChatHistory 
-} from '../utils/statePersistence';
+import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
+import sessionManager from '../utils/sessionManager';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef(null);
+  const sessionInitialized = useRef(false);
 
-  // Load saved preferences on mount
+  // Initialize session on mount
   useEffect(() => {
-    const prefs = loadModePreferences();
-    setCommanderMode(prefs.commanderMode);
-    setWebSearchMode(prefs.webSearchMode);
+    const initializeSession = async () => {
+      if (sessionInitialized.current) return;
+      sessionInitialized.current = true;
+      
+      const prefs = loadModePreferences();
+      setCommanderMode(prefs.commanderMode);
+      setWebSearchMode(prefs.webSearchMode);
+      
+      // Start a new session or load last session
+      try {
+        const sessionData = await sessionManager.listSessions(1, 0);
+        if (sessionData.sessions && sessionData.sessions.length > 0) {
+          // Load most recent session
+          const lastSession = sessionData.sessions[0];
+          const loaded = await sessionManager.loadSession(lastSession.session_id);
+          setMessages(loaded.messages || []);
+          setCurrentSessionId(loaded.session_id);
+          console.log(`📥 Resumed session: ${loaded.session_id}`);
+        } else {
+          // Start new session
+          const sessionId = await sessionManager.startNewSession('User');
+          setCurrentSessionId(sessionId);
+          console.log(`✨ Started new session: ${sessionId}`);
+        }
+      } catch (error) {
+        console.error('Session initialization error:', error);
+        // Fallback: start new session
+        try {
+          const sessionId = await sessionManager.startNewSession('User');
+          setCurrentSessionId(sessionId);
+        } catch (e) {
+          console.error('Failed to start new session:', e);
+        }
+      }
+    };
     
-    // Load chat history if available
-    const history = loadChatHistory();
-    if (history.length > 0 && messages.length === 0) {
-      setMessages(history);
-      console.log(`📥 Restored ${history.length} messages from history`);
-    }
+    initializeSession();
   }, []);
 
   // Save mode preferences whenever they change
@@ -34,12 +60,16 @@ function Chat({ messages, setMessages, input, setInput }) {
     saveModePreferences(commanderMode, webSearchMode);
   }, [commanderMode, webSearchMode]);
 
-  // Save chat history whenever messages change
+  // Sync messages with session manager whenever they change
   useEffect(() => {
-    if (messages.length > 0) {
-      saveChatHistory(messages);
+    if (messages.length > 0 && currentSessionId) {
+      // Update session manager's message list
+      const session = sessionManager.getCurrentSession();
+      if (session && session.session_id === currentSessionId) {
+        session.messages = messages;
+      }
     }
-  }, [messages]);
+  }, [messages, currentSessionId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,12 +90,73 @@ function Chat({ messages, setMessages, input, setInput }) {
     }
   }, []);
 
+  const startNewSession = async () => {
+    try {
+      const sessionId = await sessionManager.startNewSession('User');
+      setCurrentSessionId(sessionId);
+      setMessages([]);
+      setCurrentResponse('');
+      console.log(`✨ Started new session: ${sessionId}`);
+    } catch (error) {
+      console.error('Failed to start new session:', error);
+    }
+  };
+
+  const loadSessionFromList = async (sessionId) => {
+    try {
+      const loaded = await sessionManager.loadSession(sessionId);
+      setMessages(loaded.messages || []);
+      setCurrentSessionId(loaded.session_id);
+      setShowSessionList(false);
+      console.log(`📥 Loaded session: ${sessionId}`);
+    } catch (error) {
+      console.error('Failed to load session:', error);
+    }
+  };
+
+  const loadSessionsList = async () => {
+    try {
+      const data = await sessionManager.listSessions(50, 0);
+      setSessions(data.sessions || []);
+      setShowSessionList(true);
+    } catch (error) {
+      console.error('Failed to load sessions list:', error);
+    }
+  };
+
+  const deleteSessionFromList = async (sessionId, event) => {
+    event.stopPropagation();
+    if (!confirm('Are you sure you want to delete this session?')) {
+      return;
+    }
+    
+    try {
+      await sessionManager.deleteSession(sessionId);
+      // Refresh the list
+      const data = await sessionManager.listSessions(50, 0);
+      setSessions(data.sessions || []);
+      
+      // If we deleted the current session, start a new one
+      if (sessionId === currentSessionId) {
+        await startNewSession();
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = { role: 'user', content: input };
     const messageText = input;
     setMessages(prev => [...prev, userMessage]);
+    
+    // Add to session manager
+    if (currentSessionId) {
+      sessionManager.addMessage('user', input);
+    }
+    
     setInput('');
     setIsLoading(true);
     setCurrentResponse('');
@@ -150,6 +241,16 @@ function Chat({ messages, setMessages, input, setInput }) {
       }
       
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Add to session manager
+      if (currentSessionId) {
+        sessionManager.addMessage('assistant', assistantMessage.content, {
+          modes: assistantMessage.modes,
+          hasTools: assistantMessage.hasTools,
+          timestamp: assistantMessage.timestamp
+        });
+      }
+      
       setCurrentResponse('');
     } catch (error) {
       console.error('Chat error:', error);
@@ -170,10 +271,8 @@ function Chat({ messages, setMessages, input, setInput }) {
   };
 
   const clearChat = () => {
-    setMessages([]);
-    setCurrentResponse('');
-    clearChatHistory(); // Clear from localStorage too
-    console.log('🗑️ Chat cleared');
+    // This now starts a new session instead of just clearing
+    startNewSession();
   };
 
   return (
@@ -181,11 +280,54 @@ function Chat({ messages, setMessages, input, setInput }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h1 className="page-title">Chat</h1>
-          <p className="page-description">Text conversation with AI</p>
+          <p className="page-description">
+            Text conversation with AI
+            {currentSessionId && (
+              <span style={{ marginLeft: '10px', fontSize: '12px', color: '#888' }}>
+                Session: {currentSessionId.substring(0, 8)}
+              </span>
+            )}
+          </p>
         </div>
         
-        {/* Mode Toggles */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        {/* Session and Mode Controls */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Session Controls */}
+          <button
+            onClick={startNewSession}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#00d9ff',
+              color: '#000',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+            title="Start new session"
+          >
+            ✨ New
+          </button>
+          
+          <button
+            onClick={loadSessionsList}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+            title="Load previous session"
+          >
+            📋 Sessions
+          </button>
+          
+          {/* Mode Toggles */}
           <button
             onClick={() => setCommanderMode(!commanderMode)}
             style={{
@@ -236,6 +378,106 @@ function Chat({ messages, setMessages, input, setInput }) {
           </button>
         </div>
       </div>
+
+      {/* Session List Modal */}
+      {showSessionList && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#1a1a2e',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            border: '2px solid #333'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, color: '#00d9ff' }}>📋 Sessions</h2>
+              <button
+                onClick={() => setShowSessionList(false)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Close
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {sessions.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#666' }}>No sessions found</p>
+              ) : (
+                sessions.map(session => (
+                  <div 
+                    key={session.session_id}
+                    onClick={() => loadSessionFromList(session.session_id)}
+                    style={{
+                      padding: '12px',
+                      backgroundColor: session.session_id === currentSessionId ? '#2a2a40' : '#0f0f1e',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: session.session_id === currentSessionId ? '2px solid #00d9ff' : '1px solid #333',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a40'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = session.session_id === currentSessionId ? '#2a2a40' : '#0f0f1e'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#4a9eff', marginBottom: '4px' }}>
+                          Session {session.session_id.substring(0, 8)}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>
+                          {new Date(session.started_at).toLocaleString()} • {session.message_count} messages
+                        </div>
+                        {session.preview && (
+                          <div style={{ fontSize: '13px', color: '#ccc', fontStyle: 'italic' }}>
+                            "{session.preview}..."
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => deleteSessionFromList(session.session_id, e)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#ff4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          marginLeft: '10px'
+                        }}
+                        title="Delete session"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div style={{
