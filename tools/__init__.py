@@ -183,6 +183,40 @@ TOOLS = {
             "requires_commander": True,
             "requires_verification": False
         }
+    },
+    "files": {
+        "read_file": {
+            "module": "tools.system.files",
+            "function": "read_file",
+            "description": "📖 READ FILE: Read contents of a text file. Max 10MB. Returns file content, size, and line count.",
+            "params": {"path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "write_file": {
+            "module": "tools.system.files",
+            "function": "write_file",
+            "description": "✍️ WRITE FILE: Write or create a file with content. Creates directories if needed.",
+            "params": {"path": "string", "content": "string"},
+            "requires_commander": True,  # Writing requires permission
+            "requires_verification": True
+        },
+        "list_files": {
+            "module": "tools.system.files",
+            "function": "list_files",
+            "description": "📁 LIST FILES: List all files and directories in a path. Shows names, sizes, and timestamps.",
+            "params": {"directory": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "file_info": {
+            "module": "tools.system.files",
+            "function": "file_info",
+            "description": "ℹ️ FILE INFO: Get detailed information about a file (size, dates, permissions, line count).",
+            "params": {"path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
     }
 }
 
