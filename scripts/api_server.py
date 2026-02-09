@@ -107,6 +107,8 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_load_session()
         elif path == '/api/sessions/export':
             self.handle_export_session()
+        elif path == '/api/sessions/delete':
+            self.handle_delete_session()
         elif path == '/api/resources/switch':
             self.handle_switch_device()
         elif path == '/api/resources/configure':
@@ -557,8 +559,18 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             self.send_json_error(str(e))
     
     def handle_list_sessions(self):
-        """List all saved sessions"""
+        """List all saved sessions with enhanced metadata"""
         try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            limit = 100  # Default limit
+            offset = 0  # Default offset
+            
+            if content_length > 0:
+                body = self.rfile.read(content_length)
+                data = json.loads(body)
+                limit = data.get('limit', 100)
+                offset = data.get('offset', 0)
+            
             sessions_dir = logging_system.base_path / "sessions"
             sessions = []
             
@@ -569,22 +581,44 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                             try:
                                 import json
                                 session_data = json.loads(session_file.read_text())
+                                messages = session_data.get('messages', [])
+                                
+                                # Get first user message for preview
+                                first_message = next((m['content'][:100] for m in messages if m['role'] == 'user'), '')
+                                
                                 sessions.append({
                                     'session_id': session_data['session_id'],
                                     'started_at': session_data['started_at'],
+                                    'last_updated': session_data.get('last_updated', session_data['started_at']),
                                     'user_name': session_data.get('user_name', 'Unknown'),
-                                    'message_count': len(session_data.get('messages', [])),
+                                    'message_count': len(messages),
+                                    'total_messages': session_data.get('stats', {}).get('total_messages', len(messages)),
+                                    'user_messages': session_data.get('stats', {}).get('user_messages', 0),
+                                    'assistant_messages': session_data.get('stats', {}).get('assistant_messages', 0),
+                                    'preview': first_message,
                                     'file_path': str(session_file)
                                 })
                             except:
                                 continue
+            
+            # Apply pagination
+            total_sessions = len(sessions)
+            paginated_sessions = sessions[offset:offset + limit]
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            self.wfile.write(json.dumps({'sessions': sessions[:50]}).encode())  # Limit to 50
+            self.wfile.write(json.dumps({
+                'sessions': paginated_sessions,
+                'total_sessions': total_sessions,
+                'sessions_today': sum(1 for s in sessions if s['started_at'][:10] == datetime.now().strftime('%Y-%m-%d')),
+                'sessions_this_week': sum(1 for s in sessions if (datetime.now() - datetime.fromisoformat(s['started_at'])).days < 7),
+                'total_messages': sum(s['message_count'] for s in sessions),
+                'limit': limit,
+                'offset': offset
+            }).encode())
             
         except Exception as e:
             self.send_json_error(str(e))
@@ -653,6 +687,49 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             self.wfile.write(json.dumps({
                 'success': True,
                 'export_path': result
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_delete_session(self):
+        """Delete a specific session"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            session_id = data.get('session_id')
+            if not session_id:
+                self.send_json_error("No session_id provided")
+                return
+            
+            # Find and delete session file
+            sessions_dir = logging_system.base_path / "sessions"
+            session_file = None
+            
+            for month_dir in sessions_dir.iterdir():
+                if month_dir.is_dir():
+                    potential_file = month_dir / f"{session_id}.json"
+                    if potential_file.exists():
+                        session_file = potential_file
+                        break
+            
+            if not session_file:
+                self.send_json_error("Session not found")
+                return
+            
+            # Delete the file
+            session_file.unlink()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'message': f'Session {session_id} deleted'
             }).encode())
             
         except Exception as e:
