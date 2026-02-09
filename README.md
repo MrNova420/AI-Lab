@@ -7,6 +7,37 @@
 [![Electron](https://img.shields.io/badge/Electron-Latest-47848F.svg)](https://www.electronjs.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+---
+
+## 🎉 Recent Updates (February 7, 2026)
+
+### ✅ Major Overhaul Complete - Tool Execution System Fixed!
+
+The core AI tool execution system has been completely rewritten and is now **fully functional**:
+
+**What Changed:**
+- ✨ **NEW**: Intelligent tool executor that dynamically loads and runs tools
+- ✨ **NEW**: AI now analyzes requests and chooses tools intelligently (no hardcoded keywords!)
+- ✨ **NEW**: Complete tool modules for system control (apps, screenshots, mouse, keyboard)
+- 🔧 **FIXED**: Commander Mode now uses AI intelligence instead of keyword matching
+- 🔧 **FIXED**: Web Search Mode properly integrated with search tools
+- 🔧 **FIXED**: API handler completely rewritten to support tool execution pipeline
+- 📚 **NEW**: Comprehensive documentation and testing
+
+**Key Features:**
+- 🧠 AI reads tool registry and decides which tools to use
+- 🔐 Permission system prevents unsafe tool execution
+- 🛠️ All 21 tools now properly functional
+- 🧪 Full test suite with integration tests
+- 📖 Complete architecture documentation
+
+**Read More:**
+- [Tool Execution System Architecture](docs/TOOL_EXECUTION_SYSTEM.md)
+- [Complete Project Analysis & Fixes](docs/PROJECT_FIXES_SUMMARY.md)
+- [Development Roadmap](docs/ROADMAP.md)
+
+---
+
 ## ✨ Features
 
 ### 🧠 **Intelligent AI System**
@@ -104,29 +135,35 @@ ai-forge/
 │   └── renderer/          # React frontend
 ├── core/                  # Core Python backend
 │   ├── ai_protocol.py    # AI behavior and prompts
-│   ├── reasoning.py      # Reasoning & learning layer (NEW!)
+│   ├── reasoning.py      # Reasoning & learning layer
+│   ├── tool_executor.py  # ✨ NEW! Dynamic tool execution engine
 │   ├── runtime/          # Model runtime management
 │   └── config.py         # Configuration management
 ├── scripts/              # Backend services
-│   ├── api_server.py     # HTTP API server (with reasoning integration)
+│   ├── api_server.py     # HTTP API server (REWRITTEN!)
 │   ├── commander.py      # System control
-│   └── smart_parser.py   # Tool call parser
-├── tools/                # Tool registry
+│   └── smart_parser.py   # Tool declaration parser
+├── tools/                # Tool registry (21 tools)
 │   ├── __init__.py       # Dynamic tool registry
-│   ├── system/           # System tools (datetime, system_info, etc.)
-│   └── web/              # Web tools (search, verify, etc.)
-└── memory/               # Persistent data
-    └── sessions/         # Session storage
+│   ├── system/           # System tools (datetime, apps, screenshots)
+│   ├── input/            # ✨ NEW! Mouse & keyboard control
+│   └── web/              # Web tools (search, verify, scrape)
+├── tests/                # Test suite
+└── docs/                 # ✨ NEW! Complete documentation
 ```
 
-### How It Works
+### How It Works (Updated Architecture)
 
-1. **User Input** → Voice or text
-2. **Intent Analysis** → Reasoning layer analyzes complexity and context
-3. **Smart Caching** → Checks for recent cached results (30-120x faster!)
-4. **AI Analysis** → Reads available tools and decides which to use
-5. **Tool Declaration** → AI specifies tools: `<TOOLS>current_date</TOOLS>`
-6. **Execution** → System runs tools and gets real results
+1. **User Input** → Voice or text query
+2. **Mode Detection** → Normal / Commander ⚡ / Web Search 🌐
+3. **AI Analysis** → AI reads tool registry and decides which tools to use
+4. **Tool Declaration** → AI declares: `<TOOLS>tool_name(params)</TOOLS>`
+5. **Smart Parser** → Extracts tool declarations and parameters
+6. **Permission Check** → Validates tools against mode permissions
+7. **Tool Execution** → Dynamically loads and runs tools from registry
+8. **Result Verification** → Formats results for AI and user
+9. **Final Response** → AI sees tool results and provides natural answer
+10. **Display** → Streams clean output with tool indicators
 7. **Result Verification** → Confidence scoring and error detection
 8. **Self-Correction** → AI sees results and provides accurate answer
 9. **Learning** → System tracks success rates and execution times

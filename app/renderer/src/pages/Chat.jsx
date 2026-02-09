@@ -98,14 +98,22 @@ function Chat({ messages, setMessages, input, setInput }) {
       }
       
       // Add assistant message with mode indicators
-      setMessages(prev => [...prev, { 
+      const assistantMessage = { 
         role: 'assistant', 
-        content: fullResponse,
+        content: fullResponse || currentResponse,
         modes: {
           commander: commanderMode,
           webSearch: webSearchMode
-        }
-      }]);
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Check if response contains tool executions
+      if (fullResponse && fullResponse.includes('🛠️')) {
+        assistantMessage.hasTools = true;
+      }
+      
+      setMessages(prev => [...prev, assistantMessage]);
       setCurrentResponse('');
     } catch (error) {
       console.error('Chat error:', error);
@@ -229,6 +237,17 @@ function Chat({ messages, setMessages, input, setInput }) {
                 {msg.role === 'user' ? '👤 You' : 
                   <>
                     🤖 Assistant
+                    {msg.hasTools && (
+                      <span style={{
+                        marginLeft: '8px',
+                        padding: '2px 8px',
+                        backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                        borderRadius: '4px',
+                        color: '#ffa500',
+                        fontSize: '0.8em',
+                        fontWeight: 'bold'
+                      }}>🛠️ TOOLS</span>
+                    )}
                     {msg.modes?.commander && (
                       <span style={{
                         marginLeft: '8px', 
@@ -306,9 +325,42 @@ function Chat({ messages, setMessages, input, setInput }) {
               fontSize: '12px', 
               color: '#888', 
               marginBottom: '4px',
-              fontWeight: 'bold' 
+              fontWeight: 'bold',
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center'
             }}>
-              🤖 Assistant
+              <span>🤖 Assistant</span>
+              {currentResponse.includes('🛠️') && (
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                  borderRadius: '4px',
+                  color: '#ffa500',
+                  fontSize: '0.8em',
+                  fontWeight: 'bold'
+                }}>🛠️ TOOLS</span>
+              )}
+              {commanderMode && (
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'rgba(255, 68, 68, 0.2)',
+                  borderRadius: '4px',
+                  color: '#ff4444',
+                  fontSize: '0.8em',
+                  fontWeight: 'bold'
+                }}>⚡ CMD</span>
+              )}
+              {webSearchMode && (
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'rgba(68, 255, 68, 0.2)',
+                  borderRadius: '4px',
+                  color: '#44ff44',
+                  fontSize: '0.8em',
+                  fontWeight: 'bold'
+                }}>🌐 WEB</span>
+              )}
             </div>
             <div style={{ whiteSpace: 'pre-wrap' }}>
               {currentResponse}
