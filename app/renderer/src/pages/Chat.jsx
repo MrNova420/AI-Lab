@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { trackToolsFromResponse } from '../utils/toolTracking';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +112,8 @@ function Chat({ messages, setMessages, input, setInput }) {
       // Check if response contains tool executions
       if (assistantMessage.content && assistantMessage.content.includes('🛠️')) {
         assistantMessage.hasTools = true;
+        // Track tool usage for statistics
+        trackToolsFromResponse(assistantMessage.content);
       }
       
       setMessages(prev => [...prev, assistantMessage]);

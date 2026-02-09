@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import BrowserCommander from './commander-browser.js';
+import { trackToolsFromResponse } from '../utils/toolTracking';
 
 function Voice() {
   const [isRecording, setIsRecording] = useState(false);
@@ -548,6 +549,8 @@ function Voice() {
         // Check if response contains tool executions
         if (fullResponse.includes('🛠️')) {
           assistantMessage.hasTools = true;
+          // Track tool usage for statistics
+          trackToolsFromResponse(fullResponse);
         }
         
         setMessages(prev => [...prev, assistantMessage]);
