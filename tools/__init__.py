@@ -217,6 +217,32 @@ TOOLS = {
             "requires_commander": False,
             "requires_verification": False
         }
+    },
+    "processes": {
+        "list_processes": {
+            "module": "tools.system.processes",
+            "function": "list_processes",
+            "description": "📊 LIST PROCESSES: Show running processes with CPU and memory usage. Returns top 50 processes.",
+            "params": {},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "process_info": {
+            "module": "tools.system.processes",
+            "function": "process_info",
+            "description": "🔍 PROCESS INFO: Get detailed info about a specific process by PID (CPU, memory, threads, etc.).",
+            "params": {"pid": "int"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "find_process": {
+            "module": "tools.system.processes",
+            "function": "find_process",
+            "description": "🔎 FIND PROCESS: Search for processes by name (case-insensitive). Returns matching PIDs.",
+            "params": {"name": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
     }
 }
 
