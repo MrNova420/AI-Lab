@@ -72,10 +72,12 @@ function Sessions() {
   };
 
   const downloadSessionJSON = (session) => {
-    // Enhanced export with full tool information
+    // Enhanced export with full tool information and model tracking
     const exportData = {
       session_id: session.session_id,
       user_name: session.user_name,
+      user_id: session.metadata?.user_id,
+      initial_model: session.metadata?.initial_model || session.model || 'unknown',
       started_at: session.started_at,
       last_updated: session.last_updated,
       metadata: session.metadata,
@@ -84,11 +86,16 @@ function Sessions() {
         role: msg.role,
         content: msg.content,
         timestamp: msg.timestamp,
-        metadata: msg.metadata,
-        // Extract tool information if present
-        tools_used: extractToolsFromMessage(msg),
+        // Model used for this specific message
+        model: msg.metadata?.model || session.metadata?.initial_model || 'unknown',
+        // Modes active during this message
         modes: msg.metadata?.modes || {},
-        has_tools: msg.metadata?.hasTools || false
+        // Tools extracted from message content
+        tools_used: extractToolsFromMessage(msg),
+        // Whether tools were executed
+        has_tools: msg.metadata?.hasTools || false,
+        // Full metadata for reference
+        metadata: msg.metadata
       }))
     };
 
@@ -128,6 +135,7 @@ function Sessions() {
       const allData = {
         exported_at: new Date().toISOString(),
         total_sessions: sessions.length,
+        export_version: '1.0',
         sessions: []
       };
 
@@ -138,14 +146,26 @@ function Sessions() {
           allData.sessions.push({
             session_id: fullSession.session_id,
             user_name: fullSession.user_name,
+            user_id: fullSession.metadata?.user_id,
+            initial_model: fullSession.metadata?.initial_model || fullSession.model || 'unknown',
             started_at: fullSession.started_at,
+            last_updated: fullSession.last_updated,
+            metadata: fullSession.metadata,
             stats: fullSession.stats,
             messages: fullSession.messages.map(msg => ({
               role: msg.role,
               content: msg.content,
               timestamp: msg.timestamp,
+              // Model used for this specific message
+              model: msg.metadata?.model || fullSession.metadata?.initial_model || 'unknown',
+              // Modes active during this message
+              modes: msg.metadata?.modes || {},
+              // Tools extracted from message
               tools_used: extractToolsFromMessage(msg),
-              modes: msg.metadata?.modes || {}
+              // Whether tools were executed
+              has_tools: msg.metadata?.hasTools || false,
+              // Full metadata
+              metadata: msg.metadata
             }))
           });
         } catch (error) {
@@ -163,7 +183,7 @@ function Sessions() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      alert(`Exported ${allData.sessions.length} sessions`);
+      alert(`Exported ${allData.sessions.length} sessions with full metadata`);
     } catch (error) {
       console.error('Failed to export all sessions:', error);
       alert('Failed to export sessions');

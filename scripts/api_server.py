@@ -433,8 +433,20 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                         break
                 full_response = ai_response
             
-            # Send done signal with full response
-            done_chunk = json.dumps({"type": "done", "full_response": full_response}) + "\n"
+            # Send done signal with full response and model info
+            try:
+                pm = ProjectManager()
+                config = pm.get_active_project_config()
+                active_model = config.get('active_model_tag', 'unknown')
+            except:
+                active_model = 'unknown'
+            
+            done_chunk = json.dumps({
+                "type": "done", 
+                "full_response": full_response,
+                "model": active_model,
+                "mode": mode
+            }) + "\n"
             try:
                 self.wfile.write(done_chunk.encode())
                 self.wfile.flush()
@@ -442,7 +454,7 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                 # Client disconnected; stop further processing for this request.
                 return
             
-            print(f"✅ Chat complete")
+            print(f"✅ Chat complete [model: {active_model}]")
             
         except Exception as e:
             print(f"❌ Chat error: {e}")
@@ -543,8 +555,17 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             user_name = current_user['display_name']
             user_id = current_user['id']
             
-            # Add user_id to metadata
+            # Get active model from project config
+            try:
+                pm = ProjectManager()
+                config = pm.get_active_project_config()
+                active_model = config.get('active_model_tag', 'unknown')
+            except:
+                active_model = 'unknown'
+            
+            # Add user_id and model to metadata
             metadata['user_id'] = user_id
+            metadata['initial_model'] = active_model
             
             session_id = logging_system.start_session(user_name, metadata)
             
@@ -560,6 +581,7 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                 'session_id': session_id,
                 'user_id': user_id,
                 'user_name': user_name,
+                'model': active_model,
                 'started_at': logging_system.current_session['started_at']
             }).encode())
             

@@ -114,6 +114,7 @@ class SessionManager {
           started_at: data.started_at,
           user_name: data.user_name || userName,
           user_id: data.user_id,
+          model: data.model || 'unknown', // Track initial model
           messages: [],
           metadata
         };
@@ -124,7 +125,7 @@ class SessionManager {
         // Start auto-save
         this.startAutoSave();
         
-        console.log(`✅ New session started: ${data.session_id}`);
+        console.log(`✅ New session started: ${data.session_id} [model: ${data.model}]`);
         return data.session_id;
       } else {
         throw new Error('Failed to start session');

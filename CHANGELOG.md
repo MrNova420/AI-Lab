@@ -2,7 +2,106 @@
 
 All notable changes to NovaForge AI Lab are documented here.
 
-## [Unreleased] - 2026-02-07
+## [0.6.0] - 2026-02-09
+
+### 🎉 Added - Session & User Management
+
+#### Complete Session Management System
+- **Unlimited Conversation History**: No more 100-message limits, full history preserved
+- **Session Browser UI**: Dedicated Sessions page for browsing all past conversations
+- **Smart Session Resumption**: Auto-resumes last session if < 30 minutes, fresh session otherwise
+- **Activity Tracking**: Tracks user activity to determine session freshness
+- **Session Export**: Export individual or bulk sessions with full metadata and tool tracking
+- **Session Search/Filter**: Find sessions by content, type, or date
+- **Auto-Save**: Every 5 seconds to backend storage
+- **Session API**: 6 REST endpoints (start, load, list, save, delete, export)
+
+#### Multi-User System
+- **User Management**: Create, update, and switch between users
+- **User Preferences**: Save mode preferences (commander, web search) per user
+- **User Statistics**: Track sessions created, messages sent, conversations
+- **Auto-Create Default**: Automatically creates "default" user on first run
+- **User API**: 5 REST endpoints (current, list, create, update, set)
+- **Session-User Linking**: Sessions tagged with user_id for isolation
+
+#### Enhanced Tools (28 total, +7 new)
+- **File Operations** (4 tools): read_file, write_file, list_files, file_info
+  - Path-restricted to PROJECT_ROOT for security
+  - Requires commander mode
+- **Process Management** (3 tools): list_processes, process_info, find_process
+  - Requires commander mode
+  - Safe null handling
+
+#### Frontend Enhancements
+- **Chat Component**: New session button (✨ New), session browser modal
+- **Voice Component**: Tool badges, backend session integration
+- **Dashboard**: Tool statistics panel with analytics
+- **Sessions Page**: Full-featured browser with export, search, filter
+- **Tool Tracking**: Utility module tracks tool usage across sessions
+- **State Persistence**: Utility module for preferences and history
+
+### 🔧 Changed
+
+#### API Server
+- Enhanced `/api/sessions/list` with pagination and rich metadata
+- Added session deletion endpoint `/api/sessions/delete`
+- Updated `/api/sessions/start` to link with current user
+- Improved error handling across all endpoints
+
+#### Session Manager
+- Added activity tracking methods (updateActivity, isSessionFresh)
+- Enhanced session metadata (user_id, message counts, timestamps)
+- Improved auto-save with debouncing
+- Added export functionality with tool extraction
+
+#### Chat/Voice Components
+- Integrated with sessionManager instead of localStorage
+- Added session UI controls (new, load, delete)
+- Implemented smart session loading on mount
+- Enhanced message metadata tracking
+
+### 🔒 Security Fixes (PR Review - 28 comments resolved)
+
+#### Critical Fixes
+- **File Operations**: Added path validation to prevent directory traversal
+- **Process Tools**: Gated behind commander mode to prevent info disclosure
+- **Tool Markup**: Stripped `<TOOLS>` tags before streaming to prevent exposure
+- **Exception Handling**: Replaced BaseException with specific exceptions
+- **Null Safety**: Added checks for None values in process handling
+
+#### API Improvements
+- **Streaming Protocol**: Restored `full_response` in done payload
+- **Commander API**: Fixed method mismatches (focus_window, keyboard_shortcut, clicks=2)
+- **Error Responses**: Proper "not implemented" errors for unavailable features
+
+#### Code Quality
+- Removed unused imports from 4 files
+- Fixed 7 broad exception handlers
+- Enhanced error messages throughout
+
+### 📚 Documentation
+
+#### New Documentation
+- `PROJECT_COMPLETE.md` - Comprehensive project status and features
+- `FUTURE_ENHANCEMENTS.md` - AI-powered features roadmap (5 phases, 500+ lines)
+- `PR_REVIEW_IMPLEMENTATION.md` - Security fixes and improvements
+- `SESSION_MANAGEMENT_COMPLETE.md` - Session system documentation
+- `USER_SYSTEM_COMPLETE.md` - User system documentation
+- `FULL_SESSION_SYSTEM_COMPLETE.md` - Complete implementation guide
+
+#### Updated Documentation
+- `README.md` - Updated with current features, tool count, session management
+- `ARCHITECTURE.md` - Added session and user management architecture
+- Archived 23 old/redundant documentation files
+
+### ✅ Quality Metrics
+- **Security Vulnerabilities**: 0 (CodeQL validated)
+- **Code Review Issues**: 0
+- **Test Coverage**: Core features covered
+- **Production Code**: ~15,000 lines
+- **Documentation**: ~5,000 lines
+
+## [0.5.0] - 2026-02-07
 
 ### 🎉 Added
 

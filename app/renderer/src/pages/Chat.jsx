@@ -180,6 +180,8 @@ function Chat({ messages, setMessages, input, setInput }) {
       const history = messages.slice(-10);
       
       let fullResponse = '';
+      let responseModel = 'unknown'; // Track model used for this response
+      let responseMode = 'normal'; // Track mode
       
       // Check if running in Electron or browser
       const isElectron = window.electron?.chat?.send;
@@ -226,6 +228,8 @@ function Chat({ messages, setMessages, input, setInput }) {
                 setCurrentResponse(prev => prev + data.token);
               } else if (data.type === 'done') {
                 fullResponse = data.full_response;
+                responseModel = data.model || 'unknown';
+                responseMode = data.mode || 'normal';
               } else if (data.type === 'error') {
                 throw new Error(data.message);
               }
@@ -236,7 +240,7 @@ function Chat({ messages, setMessages, input, setInput }) {
         }
       }
       
-      // Add assistant message with mode indicators
+      // Add assistant message with mode indicators and model info
       const assistantMessage = { 
         role: 'assistant', 
         content: fullResponse || currentResponse,
@@ -244,6 +248,7 @@ function Chat({ messages, setMessages, input, setInput }) {
           commander: commanderMode,
           webSearch: webSearchMode
         },
+        model: responseModel,
         timestamp: new Date().toISOString()
       };
       
@@ -256,11 +261,12 @@ function Chat({ messages, setMessages, input, setInput }) {
       
       setMessages(prev => [...prev, assistantMessage]);
       
-      // Add to session manager
+      // Add to session manager with model info
       if (currentSessionId) {
         sessionManager.addMessage('assistant', assistantMessage.content, {
           modes: assistantMessage.modes,
           hasTools: assistantMessage.hasTools,
+          model: assistantMessage.model,
           timestamp: assistantMessage.timestamp
         });
       }
