@@ -24,27 +24,41 @@ function Chat({ messages, setMessages, input, setInput }) {
       setCommanderMode(prefs.commanderMode);
       setWebSearchMode(prefs.webSearchMode);
       
-      // Start a new session or load last session
+      // Smart session resumption: check if last session is still fresh
+      const isFresh = sessionManager.isSessionFresh();
+      const timeSince = sessionManager.getTimeSinceActivity();
+      
       try {
-        const sessionData = await sessionManager.listSessions(1, 0);
-        if (sessionData.sessions && sessionData.sessions.length > 0) {
-          // Load most recent session
-          const lastSession = sessionData.sessions[0];
-          const loaded = await sessionManager.loadSession(lastSession.session_id);
-          setMessages(loaded.messages || []);
-          setCurrentSessionId(loaded.session_id);
-          console.log(`📥 Resumed session: ${loaded.session_id}`);
+        if (isFresh) {
+          // Resume last session (< 30 minutes old)
+          const sessionData = await sessionManager.listSessions(1, 0);
+          if (sessionData.sessions && sessionData.sessions.length > 0) {
+            const lastSession = sessionData.sessions[0];
+            const loaded = await sessionManager.loadSession(lastSession.session_id);
+            setMessages(loaded.messages || []);
+            setCurrentSessionId(loaded.session_id);
+            console.log(`📥 Resumed fresh session (last activity: ${timeSince}): ${loaded.session_id}`);
+          } else {
+            // No sessions exist, start new
+            const sessionId = await sessionManager.startNewSession();
+            setCurrentSessionId(sessionId);
+            console.log(`✨ Started new session (no history)`);
+          }
         } else {
-          // Start new session
-          const sessionId = await sessionManager.startNewSession('User');
+          // Session is stale (>= 30 minutes), start fresh
+          const sessionId = await sessionManager.startNewSession();
           setCurrentSessionId(sessionId);
-          console.log(`✨ Started new session: ${sessionId}`);
+          if (timeSince !== 'Never') {
+            console.log(`✨ Started fresh session (last activity: ${timeSince})`);
+          } else {
+            console.log(`✨ Started new session (first time)`);
+          }
         }
       } catch (error) {
         console.error('Session initialization error:', error);
         // Fallback: start new session
         try {
-          const sessionId = await sessionManager.startNewSession('User');
+          const sessionId = await sessionManager.startNewSession();
           setCurrentSessionId(sessionId);
         } catch (e) {
           console.error('Failed to start new session:', e);

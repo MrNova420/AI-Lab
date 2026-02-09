@@ -3,20 +3,98 @@
 
 const API_BASE = 'http://localhost:5174/api';
 
+// Session timeout: 30 minutes of inactivity
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Session Manager Class
  * Handles all session operations with backend integration
+ * Includes smart session resumption and activity tracking
  */
 class SessionManager {
   constructor() {
     this.currentSession = null;
     this.autoSaveInterval = null;
     this.autoSaveDelay = 5000; // Auto-save every 5 seconds
+    this.lastActivity = null;
+    this.loadLastActivity();
+  }
+
+  /**
+   * Load last activity timestamp from localStorage
+   */
+  loadLastActivity() {
+    try {
+      const stored = localStorage.getItem('session_last_activity');
+      if (stored) {
+        this.lastActivity = new Date(stored);
+      }
+    } catch (error) {
+      console.error('Error loading last activity:', error);
+    }
+  }
+
+  /**
+   * Save last activity timestamp to localStorage
+   */
+  saveLastActivity() {
+    try {
+      this.lastActivity = new Date();
+      localStorage.setItem('session_last_activity', this.lastActivity.toISOString());
+    } catch (error) {
+      console.error('Error saving last activity:', error);
+    }
+  }
+
+  /**
+   * Check if last session is still fresh (< 30 min old)
+   * @returns {boolean} True if session is fresh
+   */
+  isSessionFresh() {
+    if (!this.lastActivity) {
+      return false;
+    }
+    
+    const now = new Date();
+    const timeSinceActivity = now - this.lastActivity;
+    return timeSinceActivity < SESSION_TIMEOUT_MS;
+  }
+
+  /**
+   * Get time since last activity in human-readable format
+   * @returns {string} Time description
+   */
+  getTimeSinceActivity() {
+    if (!this.lastActivity) {
+      return 'Never';
+    }
+    
+    const now = new Date();
+    const minutes = Math.floor((now - this.lastActivity) / (60 * 1000));
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes === 1) return '1 minute ago';
+    if (minutes < 60) return `${minutes} minutes ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours === 1) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    
+    const days = Math.floor(hours / 24);
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
+  }
+
+  /**
+   * Update activity timestamp (call on every user action)
+   */
+  updateActivity() {
+    this.saveLastActivity();
   }
 
   /**
    * Start a new session
-   * @param {string} userName - User name for the session
+   * @param {string} userName - User name for the session (deprecated, uses current user)
    * @param {object} metadata - Additional metadata
    * @returns {Promise<string>} Session ID
    */
@@ -25,7 +103,7 @@ class SessionManager {
       const response = await fetch(`${API_BASE}/sessions/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_name: userName, metadata })
+        body: JSON.stringify({ metadata })
       });
       
       const data = await response.json();
@@ -34,10 +112,14 @@ class SessionManager {
         this.currentSession = {
           session_id: data.session_id,
           started_at: data.started_at,
-          user_name: userName,
+          user_name: data.user_name || userName,
+          user_id: data.user_id,
           messages: [],
           metadata
         };
+        
+        // Update activity timestamp
+        this.updateActivity();
         
         // Start auto-save
         this.startAutoSave();
@@ -189,6 +271,9 @@ class SessionManager {
 
     this.currentSession.messages.push(message);
     this.currentSession.last_updated = new Date().toISOString();
+    
+    // Update activity timestamp on every message
+    this.updateActivity();
     
     // Update stats
     if (!this.currentSession.stats) {
