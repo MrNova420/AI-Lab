@@ -26,6 +26,7 @@ from core.memory_system import AdvancedMemory
 from core.resource_monitor import get_monitor, get_controller
 from core.comprehensive_status import status_monitor as comprehensive_monitor
 from core.tool_executor import ToolExecutor
+from core.user_manager import user_manager
 from scripts.smart_parser import parse_tool_declarations, remove_tool_declarations
 from core.ai_protocol import get_system_prompt
 from tools import generate_tools_description
@@ -109,6 +110,16 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_export_session()
         elif path == '/api/sessions/delete':
             self.handle_delete_session()
+        elif path == '/api/users/current':
+            self.handle_get_current_user()
+        elif path == '/api/users/list':
+            self.handle_list_users()
+        elif path == '/api/users/create':
+            self.handle_create_user()
+        elif path == '/api/users/update':
+            self.handle_update_user()
+        elif path == '/api/users/set':
+            self.handle_set_current_user()
         elif path == '/api/resources/switch':
             self.handle_switch_device()
         elif path == '/api/resources/configure':
@@ -519,16 +530,26 @@ Now provide a natural, helpful response based on the tool results above. Be conc
         self.wfile.write(json.dumps({"error": message}).encode())
     
     def handle_start_session(self):
-        """Start a new chat session"""
+        """Start a new chat session for the current user"""
         try:
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length)
             data = json.loads(body)
             
-            user_name = data.get('user_name', 'User')
             metadata = data.get('metadata', {})
             
+            # Get current user
+            current_user = user_manager.get_current_user()
+            user_name = current_user['display_name']
+            user_id = current_user['id']
+            
+            # Add user_id to metadata
+            metadata['user_id'] = user_id
+            
             session_id = logging_system.start_session(user_name, metadata)
+            
+            # Increment user stats
+            user_manager.increment_stat('sessions_created')
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -537,6 +558,8 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             
             self.wfile.write(json.dumps({
                 'session_id': session_id,
+                'user_id': user_id,
+                'user_name': user_name,
                 'started_at': logging_system.current_session['started_at']
             }).encode())
             
@@ -732,6 +755,120 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                 'message': f'Session {session_id} deleted'
             }).encode())
             
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_get_current_user(self):
+        """Get current active user"""
+        try:
+            user = user_manager.get_current_user()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_list_users(self):
+        """List all users"""
+        try:
+            users = user_manager.list_users()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({'users': users}).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_create_user(self):
+        """Create a new user"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            username = data.get('username')
+            display_name = data.get('display_name')
+            preferences = data.get('preferences')
+            
+            if not username:
+                self.send_json_error("No username provided")
+                return
+            
+            user = user_manager.create_user(username, display_name, preferences)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_update_user(self):
+        """Update user information"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            user_id = data.get('user_id')
+            updates = data.get('updates', {})
+            
+            if not user_id:
+                self.send_json_error("No user_id provided")
+                return
+            
+            user = user_manager.update_user(user_id, updates)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_set_current_user(self):
+        """Set the current active user"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            user_id = data.get('user_id')
+            
+            if not user_id:
+                self.send_json_error("No user_id provided")
+                return
+            
+            user = user_manager.set_current_user(user_id)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
         except Exception as e:
             self.send_json_error(str(e))
     
