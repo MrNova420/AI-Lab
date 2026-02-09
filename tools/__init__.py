@@ -243,6 +243,132 @@ TOOLS = {
             "requires_commander": True,
             "requires_verification": False
         }
+    },
+    "network": {
+        "ping": {
+            "module": "tools.network.network_tools",
+            "function": "ping",
+            "description": "🌐 PING: Check network connectivity to a host. Returns latency and success status.",
+            "params": {"host": "string", "count": "int"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "network_info": {
+            "module": "tools.network.network_tools",
+            "function": "network_info",
+            "description": "📡 NETWORK INFO: Get network interface information (IP address, hostname, FQDN).",
+            "params": {},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "traceroute": {
+            "module": "tools.network.network_tools",
+            "function": "traceroute",
+            "description": "🗺️ TRACEROUTE: Trace the network path to a host. Shows all hops.",
+            "params": {"host": "string", "max_hops": "int"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "dns_lookup": {
+            "module": "tools.network.network_tools",
+            "function": "dns_lookup",
+            "description": "🔍 DNS LOOKUP: Resolve hostname to IP address(es). Shows aliases and canonical name.",
+            "params": {"hostname": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "check_port": {
+            "module": "tools.network.network_tools",
+            "function": "check_port",
+            "description": "🔌 CHECK PORT: Check if a port is open on a host. Useful for service availability.",
+            "params": {"host": "string", "port": "int", "timeout": "int"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
+    },
+    "git": {
+        "git_status": {
+            "module": "tools.git.git_tools",
+            "function": "git_status",
+            "description": "📊 GIT STATUS: Get repository status (modified, staged, untracked files).",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_log": {
+            "module": "tools.git.git_tools",
+            "function": "git_log",
+            "description": "📜 GIT LOG: Get recent commit history with messages and authors.",
+            "params": {"repo_path": "string", "max_count": "int"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_diff": {
+            "module": "tools.git.git_tools",
+            "function": "git_diff",
+            "description": "🔍 GIT DIFF: Show changes in repository (unstaged and staged diffs).",
+            "params": {"repo_path": "string", "file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_branch_list": {
+            "module": "tools.git.git_tools",
+            "function": "git_branch_list",
+            "description": "🌳 GIT BRANCHES: List all branches in repository (local and remote).",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "git_current_branch": {
+            "module": "tools.git.git_tools",
+            "function": "git_current_branch",
+            "description": "🎯 CURRENT BRANCH: Get current branch name and tracking information.",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
+    },
+    "code": {
+        "analyze_file": {
+            "module": "tools.code.code_tools",
+            "function": "analyze_file",
+            "description": "🔬 ANALYZE FILE: Analyze code file structure (lines, functions, classes, complexity).",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "find_todos": {
+            "module": "tools.code.code_tools",
+            "function": "find_todos",
+            "description": "📝 FIND TODOS: Find TODO/FIXME/HACK comments in code files.",
+            "params": {"directory": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "count_lines": {
+            "module": "tools.code.code_tools",
+            "function": "count_lines",
+            "description": "📊 COUNT LINES: Count lines of code by file type in a directory.",
+            "params": {"directory": "string", "extensions": "list"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "find_imports": {
+            "module": "tools.code.code_tools",
+            "function": "find_imports",
+            "description": "📦 FIND IMPORTS: Extract import statements from Python files.",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "check_syntax": {
+            "module": "tools.code.code_tools",
+            "function": "check_syntax",
+            "description": "✅ CHECK SYNTAX: Validate Python syntax without executing code.",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
     }
 }
 
