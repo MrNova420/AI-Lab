@@ -26,12 +26,21 @@ function Dashboard() {
     this_week: 0,
     total_messages: 0
   });
+  const [toolStats, setToolStats] = useState({
+    total_executions: 0,
+    today: 0,
+    success_rate: 0,
+    most_used: [],
+    by_category: {},
+    recent_executions: []
+  });
   const [recentSessions, setRecentSessions] = useState([]);
   const [expandedSession, setExpandedSession] = useState(null);
 
   useEffect(() => {
     loadResources();
     loadSessions();
+    loadToolStats();
     
     // Update resources every 3 seconds (reduced from 1s)
     const resourceInterval = setInterval(loadResources, 3000);
@@ -39,9 +48,13 @@ function Dashboard() {
     // Update sessions every 15 seconds (reduced from 10s)
     const sessionInterval = setInterval(loadSessions, 15000);
     
+    // Update tool stats every 30 seconds
+    const toolInterval = setInterval(loadToolStats, 30000);
+    
     return () => {
       clearInterval(resourceInterval);
       clearInterval(sessionInterval);
+      clearInterval(toolInterval);
     };
   }, []);
 
@@ -81,6 +94,61 @@ function Dashboard() {
       }
     } catch (error) {
       console.error('Failed to load sessions:', error);
+    }
+  };
+
+  const loadToolStats = () => {
+    try {
+      // Load tool execution statistics from localStorage
+      const storedStats = localStorage.getItem('toolExecutionStats');
+      if (storedStats) {
+        const stats = JSON.parse(storedStats);
+        
+        // Calculate aggregate statistics
+        const totalExecutions = stats.executions?.length || 0;
+        const today = new Date().toDateString();
+        const todayExecutions = stats.executions?.filter(e => 
+          new Date(e.timestamp).toDateString() === today
+        ).length || 0;
+        
+        const successCount = stats.executions?.filter(e => e.success).length || 0;
+        const successRate = totalExecutions > 0 ? (successCount / totalExecutions * 100).toFixed(1) : 0;
+        
+        // Count by tool
+        const toolCounts = {};
+        const categoryCount = {};
+        stats.executions?.forEach(exec => {
+          toolCounts[exec.tool] = (toolCounts[exec.tool] || 0) + 1;
+          categoryCount[exec.category] = (categoryCount[exec.category] || 0) + 1;
+        });
+        
+        // Sort and get top 5
+        const mostUsed = Object.entries(toolCounts)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(([tool, count]) => ({ tool, count }));
+        
+        setToolStats({
+          total_executions: totalExecutions,
+          today: todayExecutions,
+          success_rate: successRate,
+          most_used: mostUsed,
+          by_category: categoryCount,
+          recent_executions: stats.executions?.slice(-10).reverse() || []
+        });
+      } else {
+        // Initialize empty stats
+        setToolStats({
+          total_executions: 0,
+          today: 0,
+          success_rate: 0,
+          most_used: [],
+          by_category: {},
+          recent_executions: []
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load tool stats:', error);
     }
   };
 
@@ -710,6 +778,124 @@ function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Tool Statistics Panel */}
+        <div className="card" style={{gridColumn: 'span 2'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+            <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <Settings size={20} />
+              🛠️ Tool Execution Statistics
+            </h3>
+            <button 
+              onClick={loadToolStats}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#ffa500',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              🔄 Refresh
+            </button>
+          </div>
+
+          {/* Tool Stats Overview */}
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px'}}>
+            <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+              <div style={{fontSize: '11px', color: '#888', marginBottom: '4px'}}>
+                🛠️ Total Executions
+              </div>
+              <div style={{fontSize: '24px', fontWeight: 'bold', color: '#ffa500'}}>{toolStats.total_executions}</div>
+            </div>
+            <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+              <div style={{fontSize: '11px', color: '#888', marginBottom: '4px'}}>
+                📅 Today
+              </div>
+              <div style={{fontSize: '24px', fontWeight: 'bold', color: '#4a9eff'}}>{toolStats.today}</div>
+            </div>
+            <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+              <div style={{fontSize: '11px', color: '#888', marginBottom: '4px'}}>
+                ✅ Success Rate
+              </div>
+              <div style={{fontSize: '24px', fontWeight: 'bold', color: '#00ff88'}}>{toolStats.success_rate}%</div>
+            </div>
+            <div style={{padding: '12px', backgroundColor: '#1a1a2e', borderRadius: '6px', textAlign: 'center'}}>
+              <div style={{fontSize: '11px', color: '#888', marginBottom: '4px'}}>
+                📊 Categories
+              </div>
+              <div style={{fontSize: '24px', fontWeight: 'bold', color: '#ff6b6b'}}>{Object.keys(toolStats.by_category).length}</div>
+            </div>
+          </div>
+
+          {/* Most Used Tools */}
+          {toolStats.most_used.length > 0 && (
+            <div style={{marginBottom: '16px'}}>
+              <h4 style={{fontSize: '14px', color: '#888', marginBottom: '12px'}}>
+                🏆 Most Used Tools
+              </h4>
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px'}}>
+                {toolStats.most_used.map((item, idx) => (
+                  <div key={idx} style={{
+                    padding: '10px',
+                    backgroundColor: '#0f0f1e',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{fontSize: '13px', color: '#ccc'}}>{item.tool}</span>
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: idx === 0 ? '#ffa500' : '#4a9eff',
+                      padding: '2px 8px',
+                      backgroundColor: idx === 0 ? 'rgba(255, 165, 0, 0.2)' : 'rgba(74, 158, 255, 0.2)',
+                      borderRadius: '4px'
+                    }}>
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category Breakdown */}
+          {Object.keys(toolStats.by_category).length > 0 && (
+            <div style={{marginBottom: '16px'}}>
+              <h4 style={{fontSize: '14px', color: '#888', marginBottom: '12px'}}>
+                📁 Usage by Category
+              </h4>
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px'}}>
+                {Object.entries(toolStats.by_category).map(([category, count]) => (
+                  <div key={category} style={{
+                    padding: '8px',
+                    backgroundColor: '#0f0f1e',
+                    borderRadius: '6px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{fontSize: '12px', color: '#888', marginBottom: '4px'}}>{category}</div>
+                    <div style={{fontSize: '18px', fontWeight: 'bold', color: '#4a9eff'}}>{count}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Data State */}
+          {toolStats.total_executions === 0 && (
+            <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+              <div style={{fontSize: '48px', marginBottom: '16px'}}>🛠️</div>
+              <div style={{fontSize: '16px', marginBottom: '8px'}}>No tools executed yet</div>
+              <div style={{fontSize: '13px', opacity: 0.7}}>
+                Enable Commander or Web Search mode and use tools to see statistics here!
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sessions Panel - NOW INTEGRATED */}

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import BrowserCommander from './commander-browser.js';
+import { trackToolsFromResponse } from '../utils/toolTracking';
+import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
+import sessionManager from '../utils/sessionManager';
 
 function Voice() {
   const [isRecording, setIsRecording] = useState(false);
@@ -14,6 +17,7 @@ function Voice() {
   const [textOnlyMode, setTextOnlyMode] = useState(false);
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -45,6 +49,48 @@ function Voice() {
       }
     };
   }, []);
+
+  // Initialize session on mount
+  const sessionInitialized = useRef(false);
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (sessionInitialized.current) return;
+      sessionInitialized.current = true;
+      
+      const prefs = loadModePreferences();
+      setCommanderMode(prefs.commanderMode);
+      setWebSearchMode(prefs.webSearchMode);
+      
+      // Start a new voice session
+      try {
+        const sessionId = await sessionManager.startNewSession('User', { type: 'voice' });
+        setCurrentSessionId(sessionId);
+        console.log(`🎤 Started voice session: ${sessionId}`);
+      } catch (error) {
+        console.error('Voice session initialization error:', error);
+      }
+    };
+    
+    initializeSession();
+  }, []);
+
+  // Save mode preferences whenever they change
+  useEffect(() => {
+    saveModePreferences(commanderMode, webSearchMode);
+  }, [commanderMode, webSearchMode]);
+
+  // Add messages to session manager when they change
+  useEffect(() => {
+    if (messages.length > 0 && currentSessionId) {
+      // Add messages to session manager individually
+      // The session manager maintains its own message list
+      const session = sessionManager.getCurrentSession();
+      if (session && session.session_id === currentSessionId) {
+        // Session manager already has messages via addMessage calls
+        // This effect is just for keeping UI in sync
+      }
+    }
+  }, [messages, currentSessionId]);
 
   // Load text-only preference from localStorage
   useEffect(() => {
@@ -329,6 +375,11 @@ function Voice() {
         // DON'T add user message here - let getAIResponse handle it
         // This prevents duplicates when Commander mode or normal chat adds the message
         
+        // Add user message to session manager
+        if (currentSessionId && cleanTranscript) {
+          sessionManager.addMessage('user', cleanTranscript);
+        }
+        
         // Send to AI
         console.log('📤 Sending to AI/Commander:', cleanTranscript);
         setIsTranscribing(true);
@@ -533,10 +584,37 @@ function Voice() {
       // Update ref
       lastAIMessageRef.current = fullResponse;
       
-      // Add to messages
+      // Add to messages with mode indicators and tool detection
       if (fullResponse.trim().length > 0) {
-        setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
-        console.log('✅ AI response added to messages');
+        const assistantMessage = {
+          role: 'assistant',
+          content: fullResponse,
+          modes: {
+            commander: commanderMode,
+            webSearch: webSearchMode
+          },
+          timestamp: new Date().toISOString()
+        };
+        
+        // Check if response contains tool executions
+        if (fullResponse.includes('🛠️')) {
+          assistantMessage.hasTools = true;
+          // Track tool usage for statistics
+          trackToolsFromResponse(fullResponse);
+        }
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Add to session manager
+        if (currentSessionId) {
+          sessionManager.addMessage('assistant', fullResponse, {
+            modes: assistantMessage.modes,
+            hasTools: assistantMessage.hasTools,
+            timestamp: assistantMessage.timestamp
+          });
+        }
+        
+        console.log('✅ AI response added to messages with metadata');
       }
       
       // If we didn't speak anything yet and not in text-only mode, speak the full response
@@ -645,13 +723,28 @@ function Voice() {
     }
   };
 
-  const clearConversation = () => {
-    setMessages([]);
-    setTranscript('');
-    setResponse('');
-    setError('');
-    lastUserMessageRef.current = '';
-    lastAIMessageRef.current = '';
+  const clearConversation = async () => {
+    // Start new voice session
+    try {
+      const sessionId = await sessionManager.startNewSession('User', { type: 'voice' });
+      setCurrentSessionId(sessionId);
+      setMessages([]);
+      setTranscript('');
+      setResponse('');
+      setError('');
+      lastUserMessageRef.current = '';
+      lastAIMessageRef.current = '';
+      console.log('✨ New voice session started');
+    } catch (error) {
+      console.error('Failed to start new voice session:', error);
+      // Fallback
+      setMessages([]);
+      setTranscript('');
+      setResponse('');
+      setError('');
+      lastUserMessageRef.current = '';
+      lastAIMessageRef.current = '';
+    }
   };
 
   return (
@@ -986,8 +1079,39 @@ function Voice() {
                   {msg.role === 'user' ? '👤 You' : 
                     <>
                       🤖 Assistant
-                      {msg.modes?.commander && <span style={{marginLeft: '8px', color: '#ff4444', fontSize: '0.85em'}}>⚡CMD</span>}
-                      {msg.modes?.webSearch && <span style={{marginLeft: '8px', color: '#44ff44', fontSize: '0.85em'}}>🌐WEB</span>}
+                      {msg.hasTools && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                          borderRadius: '4px',
+                          color: '#ffa500',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>🛠️ TOOLS</span>
+                      )}
+                      {msg.modes?.commander && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(255, 68, 68, 0.2)',
+                          borderRadius: '4px',
+                          color: '#ff4444',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>⚡ CMD</span>
+                      )}
+                      {msg.modes?.webSearch && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(68, 255, 68, 0.2)',
+                          borderRadius: '4px',
+                          color: '#44ff44',
+                          fontSize: '0.8em',
+                          fontWeight: 'bold'
+                        }}>🌐 WEB</span>
+                      )}
                     </>
                   }
                 </span>

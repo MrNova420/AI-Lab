@@ -96,7 +96,8 @@ def click_mouse(button='left', double=False):
     
     try:
         commander = get_commander()
-        result = commander.mouse_click(button, double)
+        clicks = 2 if double else 1
+        result = commander.mouse_click(button, clicks=clicks)
         
         if result.get('success'):
             click_type = "double-clicked" if double else "clicked"
@@ -132,24 +133,11 @@ def get_mouse_position():
     
     try:
         commander = get_commander()
-        result = commander.get_mouse_position()
-        
-        if result.get('success'):
-            x = result.get('x', 0)
-            y = result.get('y', 0)
-            return {
-                'success': True,
-                'message': f"Mouse at ({x}, {y})",
-                'x': x,
-                'y': y
-            }
-        else:
-            return {
-                'success': False,
-                'message': result.get('error', 'Failed to get mouse position')
-            }
-    except Exception as e:
-        return {
-            'success': False,
-            'message': f"Error getting mouse position: {str(e)}"
-        }
+    # Commander does not currently support querying mouse position.
+    # Return a structured "not implemented" response instead of calling
+    # a non-existent method on the Commander class.
+    return {
+        'success': False,
+        'message': 'Getting mouse position is not supported by the current commander implementation',
+        'error': 'NOT_IMPLEMENTED'
+    }

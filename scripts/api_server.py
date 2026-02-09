@@ -26,6 +26,7 @@ from core.memory_system import AdvancedMemory
 from core.resource_monitor import get_monitor, get_controller
 from core.comprehensive_status import status_monitor as comprehensive_monitor
 from core.tool_executor import ToolExecutor
+from core.user_manager import user_manager
 from scripts.smart_parser import parse_tool_declarations, remove_tool_declarations
 from core.ai_protocol import get_system_prompt
 from tools import generate_tools_description
@@ -107,6 +108,18 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_load_session()
         elif path == '/api/sessions/export':
             self.handle_export_session()
+        elif path == '/api/sessions/delete':
+            self.handle_delete_session()
+        elif path == '/api/users/current':
+            self.handle_get_current_user()
+        elif path == '/api/users/list':
+            self.handle_list_users()
+        elif path == '/api/users/create':
+            self.handle_create_user()
+        elif path == '/api/users/update':
+            self.handle_update_user()
+        elif path == '/api/users/set':
+            self.handle_set_current_user()
         elif path == '/api/resources/switch':
             self.handle_switch_device()
         elif path == '/api/resources/configure':
@@ -341,21 +354,29 @@ class APIHandler(BaseHTTPRequestHandler):
             
             # Phase 1: Get AI response (may contain tool declarations)
             ai_response = ""
+            full_response = ""  # Track complete response for frontend
             for token in driver.generate(chat_history, stream=True):
                 ai_response += token
-                # Stream tokens to user in real-time
-                chunk = json.dumps({"type": "token", "token": token}) + "\n"
-                try:
-                    self.wfile.write(chunk.encode())
-                    self.wfile.flush()
-                except BrokenPipeError:
-                    break
+                # Don't stream raw tokens yet - wait to check for tools
             
             # Phase 2: Check for tool declarations
             tool_declarations = parse_tool_declarations(ai_response)
             
             if tool_declarations:
                 print(f"🛠️ AI requested {len(tool_declarations)} tools")
+                
+                # Strip tool markup and stream clean response
+                clean_ai_response = remove_tool_declarations(ai_response)
+                if clean_ai_response.strip():
+                    for char in clean_ai_response:
+                        chunk = json.dumps({"type": "token", "token": char}) + "\n"
+                        try:
+                            self.wfile.write(chunk.encode())
+                            self.wfile.flush()
+                        except BrokenPipeError:
+                            # Client disconnected, stop streaming
+                            pass
+                    full_response += clean_ai_response
                 
                 # Execute tools
                 tool_results = tool_executor.execute_tools(tool_declarations)
@@ -369,10 +390,10 @@ class APIHandler(BaseHTTPRequestHandler):
                         self.wfile.flush()
                     except BrokenPipeError:
                         pass
+                    full_response += f"\n{user_results}\n"
                 
                 # Phase 3: Give AI the tool results for final response
                 ai_results = tool_executor.format_results(tool_results)
-                clean_ai_response = remove_tool_declarations(ai_response)
                 
                 # Add tool results to history and ask AI to provide final answer
                 follow_up = f"""Previous AI response: {clean_ai_response}
@@ -392,6 +413,7 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                     self.wfile.flush()
                 except BrokenPipeError:
                     pass
+                full_response += final_intro
                 
                 for token in driver.generate(chat_history, stream=True):
                     chunk = json.dumps({"type": "token", "token": token}) + "\n"
@@ -400,16 +422,41 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                         self.wfile.flush()
                     except BrokenPipeError:
                         break
+                    full_response += token
+            else:
+                # No tools - stream response normally
+                for char in ai_response:
+                    chunk = json.dumps({"type": "token", "token": char}) + "\n"
+                    try:
+                        self.wfile.write(chunk.encode())
+                        self.wfile.flush()
+                    except BrokenPipeError:
+                        break
+                full_response = ai_response
             
-            # Send done signal
-            done_chunk = json.dumps({"type": "done"}) + "\n"
+            # Send done signal with full response and model info
+            try:
+                pm = ProjectManager(str(PROJECT_ROOT))
+                config = pm.get_active_project_config()
+                active_model = config.get('active_model_tag', 'unknown')
+            except Exception as e:
+                print(f"⚠️  Could not get active model: {e}")
+                active_model = 'unknown'
+            
+            done_chunk = json.dumps({
+                "type": "done", 
+                "full_response": full_response,
+                "model": active_model,
+                "mode": mode
+            }) + "\n"
             try:
                 self.wfile.write(done_chunk.encode())
                 self.wfile.flush()
             except BrokenPipeError:
-                pass
+                # Client disconnected; stop further processing for this request.
+                return
             
-            print(f"✅ Chat complete")
+            print(f"✅ Chat complete [model: {active_model}]")
             
         except Exception as e:
             print(f"❌ Chat error: {e}")
@@ -497,16 +544,36 @@ Now provide a natural, helpful response based on the tool results above. Be conc
         self.wfile.write(json.dumps({"error": message}).encode())
     
     def handle_start_session(self):
-        """Start a new chat session"""
+        """Start a new chat session for the current user"""
         try:
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length)
             data = json.loads(body)
             
-            user_name = data.get('user_name', 'User')
             metadata = data.get('metadata', {})
             
+            # Get current user
+            current_user = user_manager.get_current_user()
+            user_name = current_user['display_name']
+            user_id = current_user['id']
+            
+            # Get active model from project config
+            try:
+                pm = ProjectManager(str(PROJECT_ROOT))
+                config = pm.get_active_project_config()
+                active_model = config.get('active_model_tag', 'unknown')
+            except Exception as e:
+                print(f"⚠️  Could not get active model: {e}")
+                active_model = 'unknown'
+            
+            # Add user_id and model to metadata
+            metadata['user_id'] = user_id
+            metadata['initial_model'] = active_model
+            
             session_id = logging_system.start_session(user_name, metadata)
+            
+            # Increment user stats
+            user_manager.increment_stat('sessions_created')
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -515,6 +582,9 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             
             self.wfile.write(json.dumps({
                 'session_id': session_id,
+                'user_id': user_id,
+                'user_name': user_name,
+                'model': active_model,
                 'started_at': logging_system.current_session['started_at']
             }).encode())
             
@@ -537,8 +607,18 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             self.send_json_error(str(e))
     
     def handle_list_sessions(self):
-        """List all saved sessions"""
+        """List all saved sessions with enhanced metadata"""
         try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            limit = 100  # Default limit
+            offset = 0  # Default offset
+            
+            if content_length > 0:
+                body = self.rfile.read(content_length)
+                data = json.loads(body)
+                limit = data.get('limit', 100)
+                offset = data.get('offset', 0)
+            
             sessions_dir = logging_system.base_path / "sessions"
             sessions = []
             
@@ -549,22 +629,44 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                             try:
                                 import json
                                 session_data = json.loads(session_file.read_text())
+                                messages = session_data.get('messages', [])
+                                
+                                # Get first user message for preview
+                                first_message = next((m['content'][:100] for m in messages if m['role'] == 'user'), '')
+                                
                                 sessions.append({
                                     'session_id': session_data['session_id'],
                                     'started_at': session_data['started_at'],
+                                    'last_updated': session_data.get('last_updated', session_data['started_at']),
                                     'user_name': session_data.get('user_name', 'Unknown'),
-                                    'message_count': len(session_data.get('messages', [])),
+                                    'message_count': len(messages),
+                                    'total_messages': session_data.get('stats', {}).get('total_messages', len(messages)),
+                                    'user_messages': session_data.get('stats', {}).get('user_messages', 0),
+                                    'assistant_messages': session_data.get('stats', {}).get('assistant_messages', 0),
+                                    'preview': first_message,
                                     'file_path': str(session_file)
                                 })
                             except:
                                 continue
+            
+            # Apply pagination
+            total_sessions = len(sessions)
+            paginated_sessions = sessions[offset:offset + limit]
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            self.wfile.write(json.dumps({'sessions': sessions[:50]}).encode())  # Limit to 50
+            self.wfile.write(json.dumps({
+                'sessions': paginated_sessions,
+                'total_sessions': total_sessions,
+                'sessions_today': sum(1 for s in sessions if s['started_at'][:10] == datetime.now().strftime('%Y-%m-%d')),
+                'sessions_this_week': sum(1 for s in sessions if (datetime.now() - datetime.fromisoformat(s['started_at'])).days < 7),
+                'total_messages': sum(s['message_count'] for s in sessions),
+                'limit': limit,
+                'offset': offset
+            }).encode())
             
         except Exception as e:
             self.send_json_error(str(e))
@@ -635,6 +737,163 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                 'export_path': result
             }).encode())
             
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_delete_session(self):
+        """Delete a specific session"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            session_id = data.get('session_id')
+            if not session_id:
+                self.send_json_error("No session_id provided")
+                return
+            
+            # Find and delete session file
+            sessions_dir = logging_system.base_path / "sessions"
+            session_file = None
+            
+            for month_dir in sessions_dir.iterdir():
+                if month_dir.is_dir():
+                    potential_file = month_dir / f"{session_id}.json"
+                    if potential_file.exists():
+                        session_file = potential_file
+                        break
+            
+            if not session_file:
+                self.send_json_error("Session not found")
+                return
+            
+            # Delete the file
+            session_file.unlink()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'message': f'Session {session_id} deleted'
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_get_current_user(self):
+        """Get current active user"""
+        try:
+            user = user_manager.get_current_user()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_list_users(self):
+        """List all users"""
+        try:
+            users = user_manager.list_users()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({'users': users}).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_create_user(self):
+        """Create a new user"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            username = data.get('username')
+            display_name = data.get('display_name')
+            preferences = data.get('preferences')
+            
+            if not username:
+                self.send_json_error("No username provided")
+                return
+            
+            user = user_manager.create_user(username, display_name, preferences)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_update_user(self):
+        """Update user information"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            user_id = data.get('user_id')
+            updates = data.get('updates', {})
+            
+            if not user_id:
+                self.send_json_error("No user_id provided")
+                return
+            
+            user = user_manager.update_user(user_id, updates)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_set_current_user(self):
+        """Set the current active user"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            user_id = data.get('user_id')
+            
+            if not user_id:
+                self.send_json_error("No user_id provided")
+                return
+            
+            user = user_manager.set_current_user(user_id)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps(user).encode())
+            
+        except ValueError as e:
+            self.send_json_error(str(e))
         except Exception as e:
             self.send_json_error(str(e))
     
