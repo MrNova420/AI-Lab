@@ -51,7 +51,7 @@ The project now includes professional-grade session and user management:
 - **Smart Caching**: 30-120x speedup with intelligent cache management
 - **Session Management**: Unlimited conversation history with smart resumption
 - **User System**: Multi-user support with preferences and statistics
-- **Dynamic Tool Registry**: 28 tools across 3 categories (expandable)
+- **Dynamic Tool Registry**: 43 tools across 8 categories (expandable)
 
 ### 🎤 **Voice Assistant**
 - Natural voice commands using Web Speech API
@@ -190,13 +190,16 @@ ai-forge/
 
 ## 🛠️ Available Tools
 
-**Rich toolset across multiple categories** – See [PROJECT_COMPLETE.md](PROJECT_COMPLETE.md) for the current, full list of tools and capabilities.
+**Rich toolset across multiple categories** – See [CURRENT_TOOLS.md](CURRENT_TOOLS.md) for the complete, detailed list of all 43 tools and capabilities.
 
 ### Information Tools (Always Available)
 - `datetime` - Get current date/time with timezone
 - `system_info` - Real system information (OS, CPU, RAM, kernel)
 - `user_info` - User details (username, home directory, shell)
 - `check_app` - Check if application is installed
+- **Network tools** ✨ NEW: `ping`, `network_info`, `traceroute`, `dns_lookup`, `check_port`
+- **Git tools** ✨ NEW: `git_status`, `git_log`, `git_diff`, `git_branch_list`, `git_current_branch`
+- **Code tools** ✨ NEW: `analyze_file`, `find_todos`, `count_lines`, `find_imports`, `check_syntax`
 
 ### Commander Tools (Requires ⚡ Mode)
 - `open_app` / `close_app` / `switch_to_application` - Application management

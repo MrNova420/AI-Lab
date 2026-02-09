@@ -1,13 +1,18 @@
 # 🛠️ NovaForge AI Lab - Current Tools & Capabilities
 
-**Last Updated:** February 6, 2026
+**Last Updated:** February 9, 2026
 
 ## 📊 Overview
 
-The AI has **21 tools** across 3 categories:
-- **System Tools**: 14 tools (5 always available, 9 require Commander mode)
-- **Web Tools**: 4 tools (1 always available, 3 require Web Search mode)
-- **Input Tools**: 4 tools (all require Commander mode)
+The AI has **43 tools** across 8 categories:
+- **System Tools**: 11 tools (5 always available, 6 require Commander mode)
+- **Web Tools**: 4 tools (require Web Search mode)
+- **Input Tools**: 5 tools (all require Commander mode)
+- **File Tools**: 4 tools (require Commander mode)
+- **Process Tools**: 3 tools (require Commander mode)
+- **Network Tools**: 5 tools ✨ NEW (always available)
+- **Git Tools**: 5 tools ✨ NEW (always available)
+- **Code Tools**: 5 tools ✨ NEW (always available)
 
 ---
 
@@ -71,6 +76,101 @@ The AI has **21 tools** across 3 categories:
 - Open a website in browser
 - Parameters: `url` (string)
 - Example: "Open YouTube"
+
+### 🌐 Network Tools ✨ NEW
+
+**`ping(host, count)`**
+- Check network connectivity to a host
+- Parameters: `host` (string), `count` (int, default=4)
+- Returns: Success, latency, packet statistics
+- Example: "Ping google.com"
+
+**`network_info()`**
+- Get network interface information
+- Returns: Hostname, local IP, FQDN, interface details
+- Example: "What's my IP address?"
+
+**`traceroute(host, max_hops)`**
+- Trace the network path to a host
+- Parameters: `host` (string), `max_hops` (int, default=15)
+- Returns: Route path with hop information
+- Example: "Traceroute to google.com"
+
+**`dns_lookup(hostname)`**
+- Resolve hostname to IP address
+- Parameters: `hostname` (string)
+- Returns: IP addresses, aliases, canonical name
+- Example: "Lookup DNS for github.com"
+
+**`check_port(host, port, timeout)`**
+- Check if a port is open on a host
+- Parameters: `host` (string), `port` (int), `timeout` (int, default=5)
+- Returns: Port status (open/closed)
+- Example: "Check if port 443 is open on google.com"
+
+### 📂 Git Integration ✨ NEW
+
+**`git_status(repo_path)`**
+- Get Git repository status
+- Parameters: `repo_path` (string)
+- Returns: Modified, staged, untracked files
+- Example: "What's the Git status?"
+
+**`git_log(repo_path, max_count)`**
+- Get commit history
+- Parameters: `repo_path` (string), `max_count` (int, default=10)
+- Returns: Recent commits with messages and authors
+- Example: "Show recent Git commits"
+
+**`git_diff(repo_path, file_path)`**
+- Show changes in repository
+- Parameters: `repo_path` (string), `file_path` (optional string)
+- Returns: Diff of unstaged and staged changes
+- Example: "Show Git diff"
+
+**`git_branch_list(repo_path)`**
+- List all Git branches
+- Parameters: `repo_path` (string)
+- Returns: Local and remote branches
+- Example: "List Git branches"
+
+**`git_current_branch(repo_path)`**
+- Get current branch information
+- Parameters: `repo_path` (string)
+- Returns: Current branch name and tracking info
+- Example: "What branch am I on?"
+
+### 💻 Code Analysis ✨ NEW
+
+**`analyze_file(file_path)`**
+- Analyze code file structure
+- Parameters: `file_path` (string)
+- Returns: Lines, functions, classes, complexity metrics
+- Example: "Analyze app.py"
+
+**`find_todos(directory)`**
+- Find TODO/FIXME comments in code
+- Parameters: `directory` (string)
+- Returns: All TODO comments with locations
+- Example: "Find all TODOs in this project"
+
+**`count_lines(directory, extensions)`**
+- Count lines of code by file type
+- Parameters: `directory` (string), `extensions` (list, optional)
+- Returns: Line counts by file type
+- Example: "Count lines of Python code"
+
+**`find_imports(file_path)`**
+- Extract import statements from Python file
+- Parameters: `file_path` (string)
+- Returns: Standard library, third-party, and local imports
+- Example: "Show imports in this file"
+
+**`check_syntax(file_path)`**
+- Validate Python syntax
+- Parameters: `file_path` (string)
+- Returns: Syntax validity and any errors
+- Example: "Check syntax of app.py"
 
 ---
 
@@ -217,10 +317,15 @@ Destructive actions require Commander mode explicitly enabled.
 |--------------|-------------|--------|-------|
 | Date/Time | ✅ | ✅ | Fully working |
 | System Info | ✅ | ✅ | Fully working |
-| Screenshots | ✅ | ⚠️ | Needs testing |
-| App Control | ✅ | ⚠️ | Needs testing |
-| Mouse/Keyboard | ✅ | ⚠️ | Commander.py implemented |
-| Web Search | ✅ | ⚠️ | Backend ready, needs integration |
+| Screenshots | ✅ | ✅ | Working |
+| App Control | ✅ | ✅ | Working |
+| Mouse/Keyboard | ✅ | ✅ | Commander.py implemented |
+| Web Search | ✅ | ✅ | Multi-source search |
+| File Operations | ✅ | ✅ | Path-restricted |
+| Process Management | ✅ | ✅ | Requires psutil |
+| **Network Tools** | **✅** | **✅** | **NEW - Fully working** |
+| **Git Integration** | **✅** | **✅** | **NEW - Fully working** |
+| **Code Analysis** | **✅** | **✅** | **NEW - Fully working** |
 
 ---
 
@@ -249,16 +354,25 @@ No code changes needed in AI logic - it reads the registry dynamically!
 
 ## 🔮 Planned Tools
 
-- [ ] File operations (create, read, write, delete)
-- [ ] Process management (start, stop, monitor)
+- [x] File operations (create, read, write, delete) ✅
+- [x] Process management (list, info, find) ✅
+- [x] Network operations (ping, traceroute, DNS) ✅
+- [x] Git integration (status, log, diff, branches) ✅
+- [x] Code analysis (analyze, TODOs, LOC, imports) ✅
 - [ ] Window management (switch, minimize, maximize)
 - [ ] Clipboard operations
 - [ ] System commands (shutdown, restart, sleep)
-- [ ] Network operations (ping, download, upload)
 - [ ] Calendar & reminders
 - [ ] Email integration
 - [ ] More web sources (Brave, SearX, Wikipedia)
+- [ ] Database operations
+- [ ] Docker integration
 
 ---
 
-**Total Capabilities:** 21 tools and growing! 🚀
+**Total Capabilities:** 43 tools and growing! 🚀
+
+**Recent Updates:**
+- ✨ **Feb 9, 2026**: Added 15 new tools (Network, Git, Code categories)
+- ✨ **Feb 8, 2026**: Added file operations and process management
+- ✨ **Feb 6, 2026**: Enhanced web search with multi-source support
