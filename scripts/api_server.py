@@ -374,6 +374,7 @@ class APIHandler(BaseHTTPRequestHandler):
                             self.wfile.write(chunk.encode())
                             self.wfile.flush()
                         except BrokenPipeError:
+                            # Client disconnected, stop streaming
                             pass
                     full_response += clean_ai_response
                 
@@ -435,10 +436,11 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             
             # Send done signal with full response and model info
             try:
-                pm = ProjectManager()
+                pm = ProjectManager(str(PROJECT_ROOT))
                 config = pm.get_active_project_config()
                 active_model = config.get('active_model_tag', 'unknown')
-            except:
+            except Exception as e:
+                print(f"⚠️  Could not get active model: {e}")
                 active_model = 'unknown'
             
             done_chunk = json.dumps({
@@ -557,10 +559,11 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             
             # Get active model from project config
             try:
-                pm = ProjectManager()
+                pm = ProjectManager(str(PROJECT_ROOT))
                 config = pm.get_active_project_config()
                 active_model = config.get('active_model_tag', 'unknown')
-            except:
+            except Exception as e:
+                print(f"⚠️  Could not get active model: {e}")
                 active_model = 'unknown'
             
             # Add user_id and model to metadata

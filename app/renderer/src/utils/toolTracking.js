@@ -76,9 +76,9 @@ export function trackToolsFromResponse(response, defaultCategory = 'system') {
       category = 'web';
     } else if (tool.includes('file') || tool.includes('read') || tool.includes('write')) {
       category = 'files';
-    } else if (tool.includes('process') || tool.includes('system')) {
+    } else if (tool.includes('process')) {
       category = 'processes';
-    } else if (tool.includes('mouse') || tool.includes('keyboard') || tool.includes('app')) {
+    } else if (tool.includes('system') || tool.includes('mouse') || tool.includes('keyboard') || tool.includes('app')) {
       category = 'system';
     }
     

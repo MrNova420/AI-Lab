@@ -9,6 +9,7 @@ import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
+from core.config import ConfigManager
 
 
 class UserManager:
@@ -20,6 +21,10 @@ class UserManager:
         
         # Ensure directories exist
         self.users_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize ConfigManager instances for thread-safe file access
+        self.users_config = ConfigManager(self.users_file)
+        self.current_user_config = ConfigManager(self.current_user_file)
         
         # Initialize users file if doesn't exist
         if not self.users_file.exists():
@@ -40,39 +45,50 @@ class UserManager:
             'users': [],
             'last_updated': datetime.now().isoformat()
         }
-        self.users_file.write_text(json.dumps(users_data, indent=2))
+        # Use ConfigManager for thread-safe write
+        self.users_config.update(users_data)
     
     def _load_users(self) -> Dict:
-        """Load all users from file"""
+        """Load all users from file with proper error handling"""
         try:
-            return json.loads(self.users_file.read_text())
-        except:
+            # Use ConfigManager for thread-safe read
+            data = self.users_config.to_dict()
+            if not data or 'users' not in data:
+                self._init_users_file()
+                return self.users_config.to_dict()
+            return data
+        except (OSError, json.JSONDecodeError) as exc:
+            # If the users file is unreadable or corrupted, log and reinitialize
+            print(f"⚠️  Failed to load users: {exc}. Reinitializing users file.")
             self._init_users_file()
-            return json.loads(self.users_file.read_text())
+            return self.users_config.to_dict()
     
     def _save_users(self, users_data: Dict):
-        """Save users to file"""
+        """Save users to file with proper locking"""
         users_data['last_updated'] = datetime.now().isoformat()
-        self.users_file.write_text(json.dumps(users_data, indent=2, ensure_ascii=False))
+        # Use ConfigManager for thread-safe write
+        self.users_config.update(users_data)
     
     def _load_current_user(self) -> Optional[Dict]:
-        """Load current user from file"""
+        """Load current user from file with proper error handling"""
         try:
             if self.current_user_file.exists():
-                current_data = json.loads(self.current_user_file.read_text())
+                current_data = self.current_user_config.to_dict()
                 user_id = current_data.get('user_id')
                 if user_id:
                     return self.get_user(user_id)
-        except:
-            pass
+        except (OSError, json.JSONDecodeError) as exc:
+            # If the current user file is unreadable or corrupted, log and fall back to no current user
+            print(f"⚠️  Failed to load current user: {exc}")
+            return None
         return None
     
     def _save_current_user(self, user_id: str):
-        """Save current user to file"""
-        self.current_user_file.write_text(json.dumps({
+        """Save current user to file with proper locking"""
+        self.current_user_config.update({
             'user_id': user_id,
             'set_at': datetime.now().isoformat()
-        }, indent=2))
+        })
     
     def create_user(self, username: str, display_name: str = None, preferences: Dict = None) -> Dict:
         """Create a new user"""
@@ -210,5 +226,22 @@ class UserManager:
             self.update_user(user_id, {'stats': user['stats']})
 
 
-# Global instance
-user_manager = UserManager()
+
+class _LazyUserManager:
+    """Lazy proxy for UserManager to avoid I/O at import time."""
+    
+    def __init__(self):
+        self._instance: Optional[UserManager] = None
+    
+    def _get_instance(self) -> UserManager:
+        if self._instance is None:
+            self._instance = UserManager()
+        return self._instance
+    
+    def __getattr__(self, name):
+        # Delegate attribute access to the underlying UserManager instance
+        return getattr(self._get_instance(), name)
+
+
+# Global instance (lazy-initialized)
+user_manager = _LazyUserManager()

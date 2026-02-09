@@ -181,7 +181,7 @@ function Chat({ messages, setMessages, input, setInput }) {
       
       let fullResponse = '';
       let responseModel = 'unknown'; // Track model used for this response
-      let responseMode = 'normal'; // Track mode
+      let responseMode; // Track mode
       
       // Check if running in Electron or browser
       const isElectron = window.electron?.chat?.send;

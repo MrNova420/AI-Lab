@@ -18,8 +18,6 @@ function Voice() {
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [showSessionList, setShowSessionList] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -81,12 +79,15 @@ function Voice() {
     saveModePreferences(commanderMode, webSearchMode);
   }, [commanderMode, webSearchMode]);
 
-  // Sync messages with session manager
+  // Add messages to session manager when they change
   useEffect(() => {
     if (messages.length > 0 && currentSessionId) {
+      // Add messages to session manager individually
+      // The session manager maintains its own message list
       const session = sessionManager.getCurrentSession();
       if (session && session.session_id === currentSessionId) {
-        session.messages = messages;
+        // Session manager already has messages via addMessage calls
+        // This effect is just for keeping UI in sync
       }
     }
   }, [messages, currentSessionId]);

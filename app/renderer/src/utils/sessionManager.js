@@ -1,7 +1,11 @@
 // Session Manager - Backend-integrated session management
 // Replaces localStorage-based approach with proper backend persistence
 
-const API_BASE = 'http://localhost:5174/api';
+// Derive API base from environment or window location
+const API_BASE = import.meta.env.VITE_API_BASE || 
+  (typeof window !== 'undefined' && window.location.origin !== 'file://' 
+    ? `${window.location.protocol}//${window.location.hostname}:5174/api`
+    : 'http://localhost:5174/api');
 
 // Session timeout: 30 minutes of inactivity
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes

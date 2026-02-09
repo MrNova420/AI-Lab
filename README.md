@@ -190,7 +190,7 @@ ai-forge/
 
 ## 🛠️ Available Tools
 
-**28 tools across 3 categories** - See [PROJECT_COMPLETE.md](PROJECT_COMPLETE.md) for full documentation.
+**Rich toolset across multiple categories** – See [PROJECT_COMPLETE.md](PROJECT_COMPLETE.md) for the current, full list of tools and capabilities.
 
 ### Information Tools (Always Available)
 - `datetime` - Get current date/time with timezone
