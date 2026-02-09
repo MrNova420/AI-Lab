@@ -7,6 +7,7 @@ import Chat from './pages/Chat';
 import Voice from './pages/Voice';
 import Projects from './pages/Projects';
 import SettingsPage from './pages/Settings';
+import Sessions from './pages/Sessions';
 
 function App() {
   const [config, setConfig] = useState({ project_name: 'default', active_model_tag: null });
@@ -41,6 +42,7 @@ function App() {
     { path: '/models', icon: Download, label: 'Models' },
     { path: '/chat', icon: MessageSquare, label: 'Chat' },
     { path: '/voice', icon: Mic, label: 'Voice' },
+    { path: '/sessions', icon: FolderOpen, label: 'Sessions' },
     { path: '/projects', icon: FolderOpen, label: 'Projects' },
     { path: '/settings', icon: Settings, label: 'Settings' }
   ];
@@ -84,6 +86,7 @@ function App() {
               />
             } />
             <Route path="/voice" element={<Voice />} />
+            <Route path="/sessions" element={<Sessions />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
