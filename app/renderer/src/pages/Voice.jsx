@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import BrowserCommander from './commander-browser.js';
 import { trackToolsFromResponse } from '../utils/toolTracking';
+import { 
+  saveModePreferences, 
+  loadModePreferences, 
+  saveVoiceHistory, 
+  loadVoiceHistory, 
+  clearVoiceHistory 
+} from '../utils/statePersistence';
 
 function Voice() {
   const [isRecording, setIsRecording] = useState(false);
@@ -46,6 +53,33 @@ function Voice() {
       }
     };
   }, []);
+
+  // Load preferences and history on mount
+  useEffect(() => {
+    // Load mode preferences
+    const prefs = loadModePreferences();
+    setCommanderMode(prefs.commanderMode);
+    setWebSearchMode(prefs.webSearchMode);
+    
+    // Load voice history if available
+    const history = loadVoiceHistory();
+    if (history.length > 0) {
+      setMessages(history);
+      console.log(`📥 Restored ${history.length} voice messages from history`);
+    }
+  }, []);
+
+  // Save mode preferences whenever they change
+  useEffect(() => {
+    saveModePreferences(commanderMode, webSearchMode);
+  }, [commanderMode, webSearchMode]);
+
+  // Save voice history whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveVoiceHistory(messages);
+    }
+  }, [messages]);
 
   // Load text-only preference from localStorage
   useEffect(() => {
@@ -670,6 +704,8 @@ function Voice() {
     setError('');
     lastUserMessageRef.current = '';
     lastAIMessageRef.current = '';
+    clearVoiceHistory(); // Clear from localStorage too
+    console.log('🗑️ Voice conversation cleared');
   };
 
   return (

@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { trackToolsFromResponse } from '../utils/toolTracking';
+import { 
+  saveModePreferences, 
+  loadModePreferences, 
+  saveChatHistory, 
+  loadChatHistory, 
+  clearChatHistory 
+} from '../utils/statePersistence';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -7,6 +14,32 @@ function Chat({ messages, setMessages, input, setInput }) {
   const [commanderMode, setCommanderMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Load saved preferences on mount
+  useEffect(() => {
+    const prefs = loadModePreferences();
+    setCommanderMode(prefs.commanderMode);
+    setWebSearchMode(prefs.webSearchMode);
+    
+    // Load chat history if available
+    const history = loadChatHistory();
+    if (history.length > 0 && messages.length === 0) {
+      setMessages(history);
+      console.log(`📥 Restored ${history.length} messages from history`);
+    }
+  }, []);
+
+  // Save mode preferences whenever they change
+  useEffect(() => {
+    saveModePreferences(commanderMode, webSearchMode);
+  }, [commanderMode, webSearchMode]);
+
+  // Save chat history whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveChatHistory(messages);
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -139,6 +172,8 @@ function Chat({ messages, setMessages, input, setInput }) {
   const clearChat = () => {
     setMessages([]);
     setCurrentResponse('');
+    clearChatHistory(); // Clear from localStorage too
+    console.log('🗑️ Chat cleared');
   };
 
   return (
