@@ -244,6 +244,88 @@ TOOLS = {
             "requires_verification": False
         }
     },
+    "filesystem": {
+        "create_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_directory",
+            "description": "📁 CREATE DIRECTORY: Create a directory anywhere on the system. Full PC access like Copilot.",
+            "params": {"path": "string", "parents": "bool"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_file_with_content": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_file_with_content",
+            "description": "📝 CREATE FILE: Create a file with content anywhere on the system. Full PC access.",
+            "params": {"path": "string", "content": "string", "overwrite": "bool"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_structure": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_project_structure",
+            "description": "🏗️ CREATE PROJECT: Create entire project structure from specification. Like Copilot - create full project layouts anywhere.",
+            "params": {"base_path": "string", "structure": "dict"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "get_current_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "get_current_directory",
+            "description": "📍 GET CWD: Get current working directory.",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "change_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "change_directory",
+            "description": "📂 CHANGE DIR: Change current working directory.",
+            "params": {"path": "string"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_from_template": {
+            "module": "tools.filesystem.project_templates",
+            "function": "create_project_from_template",
+            "description": "🎨 CREATE FROM TEMPLATE: Create complete project from template (python-cli, python-api, nodejs-app, react-app, html-website). Like Copilot - instant project setup!",
+            "params": {"template_name": "string", "project_path": "string"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "list_project_templates": {
+            "module": "tools.filesystem.project_templates",
+            "function": "list_templates",
+            "description": "📋 LIST TEMPLATES: List all available project templates.",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "get_workspace_info": {
+            "module": "core.workspace_manager",
+            "function": "get_workspace_info",
+            "description": "🏠 WORKSPACE INFO: Get info about the default workspace (~/NovaForge/projects). Optional - user can work anywhere!",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_in_workspace": {
+            "module": "core.workspace_manager",
+            "function": "create_project_in_workspace",
+            "description": "⚡ QUICK PROJECT: Create project in default workspace. Convenience function - user can specify full paths elsewhere too!",
+            "params": {"project_name": "string", "template": "string"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "list_workspace_projects": {
+            "module": "core.workspace_manager",
+            "function": "list_workspace_projects",
+            "description": "📂 LIST WORKSPACE: List projects in default workspace ~/NovaForge/projects.",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        }
+    },
     "network": {
         "ping": {
             "module": "tools.network.network_tools",
