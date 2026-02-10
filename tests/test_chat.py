@@ -176,4 +176,3 @@ def test_start_chat_llm_runtime_error_during_generation(mock_stdout, mock_prompt
     assert "AI> Mock greeting.\n" in output
     assert "❌ Chat Error: LLM choked!" in output
     assert "👋 Ending chat session." in output
-```
