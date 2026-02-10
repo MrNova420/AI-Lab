@@ -144,3 +144,6 @@ body {
 .btn-primary:hover {
   background: var(--accent-hover);
 }
+
+/* Import v1 Beta Styles */
+@import './styles/v1-beta.css';
