@@ -13,24 +13,30 @@ def get_system_prompt(
     tools_description="",
     development_mode=True,
     project_context=None,
-    use_simple_mode=True  # NEW: Use simpler prompts for local models
+    use_simple_mode=True  # Use ultra-simple prompts for local models (RECOMMENDED)
 ):
     """
     Get system prompt based on mode
     Commander Mode = Full PC access + Development assistance
-    Simple Mode = Better for local models (recommended)
+    Ultra Simple Mode = Best for local models 7B-70B+ (DEFAULT)
     Normal Mode = Safe chat only
     """
     
-    # Use simple protocol for better local model compatibility
+    # ULTRA SIMPLE MODE - Best for local models (default)
+    # Works great with Mistral 7B, Llama 2, CodeLlama, etc.
     if use_simple_mode and (commander_mode or development_mode):
-        from core.simple_protocol import get_simple_development_prompt
-        return get_simple_development_prompt(
-            tools_description=tools_description,
-            commander_mode=commander_mode
-        )
+        try:
+            from core.ultra_simple_protocol import get_ultra_simple_prompt
+            return get_ultra_simple_prompt(commander_mode=commander_mode)
+        except:
+            # Fallback to previous simple protocol
+            from core.simple_protocol import get_simple_development_prompt
+            return get_simple_development_prompt(
+                tools_description=tools_description,
+                commander_mode=commander_mode
+            )
     
-    # Use enhanced development protocol if available (for larger models)
+    # Enhanced protocol for very large models (70B+) - if requested
     if development_mode and not use_simple_mode:
         try:
             from core.development_protocol import get_development_system_prompt
@@ -41,7 +47,6 @@ def get_system_prompt(
                 web_search_mode=web_search_mode
             )
         except:
-            # Fallback to original if development_protocol not available
             pass
     
     if commander_mode or web_search_mode:
