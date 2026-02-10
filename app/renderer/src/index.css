@@ -1,3 +1,6 @@
+/* Import v1 Beta Styles */
+@import './styles/v1-beta.css';
+
 * {
   margin: 0;
   padding: 0;
@@ -144,6 +147,3 @@ body {
 .btn-primary:hover {
   background: var(--accent-hover);
 }
-
-/* Import v1 Beta Styles */
-@import './styles/v1-beta.css';
