@@ -1,14 +1,38 @@
 """
 NovaForge AI Protocol
 Defines how the AI should behave and use tools intelligently
+Enhanced for full development assistance (Copilot-like capabilities)
 """
 
-def get_system_prompt(commander_mode=False, web_search_mode=False, tools_description=""):
+from typing import Optional
+
+def get_system_prompt(
+    commander_mode=False, 
+    web_search_mode=False, 
+    tools_description="",
+    development_mode=True,
+    project_context=None
+):
     """
     Get system prompt based on mode
     Commander Mode = Full PC access
+    Development Mode = Copilot-like assistance (NEW)
     Normal Mode = Safe chat only
     """
+    
+    # Use enhanced development protocol if available
+    if development_mode:
+        try:
+            from core.development_protocol import get_development_system_prompt
+            return get_development_system_prompt(
+                project_context=project_context or "",
+                tools_description=tools_description,
+                commander_mode=commander_mode,
+                web_search_mode=web_search_mode
+            )
+        except:
+            # Fallback to original if development_protocol not available
+            pass
     
     if commander_mode or web_search_mode:
         return get_commander_prompt(tools_description)
@@ -76,6 +100,30 @@ You: I'm doing great! How can I help?
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **BE CONCISE.** Don't over-explain. Use tools when needed, chat naturally otherwise.
+
+**FOR DEVELOPMENT TASKS:**
+- Analyze code using code analysis tools
+- Use Git tools to understand changes
+- Write clean, documented code
+- Think about testing and quality
+- Be proactive with suggestions
 """
     
     return base_prompt
+
+
+def inject_project_context(prompt: str, project_root: str) -> str:
+    """Inject project context into prompt for better understanding"""
+    try:
+        from core.project_context import get_ai_context
+        context = get_ai_context(project_root)
+        
+        # Insert context near the beginning
+        insertion_point = prompt.find("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if insertion_point > 0:
+            return prompt[:insertion_point] + f"\n{context}\n\n" + prompt[insertion_point:]
+        else:
+            return f"{context}\n\n{prompt}"
+    except Exception as e:
+        # If context injection fails, return original prompt
+        return prompt
