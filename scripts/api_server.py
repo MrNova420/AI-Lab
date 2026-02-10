@@ -336,7 +336,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 # Use optimized project context with caching
                 opt_context = OptimizedProjectContext(str(PROJECT_ROOT))
                 project_context = opt_context.get_ai_context() if commander_mode else ""
-            except:
+            except Exception as e:
+                logging_system.error(f"Failed to build optimized project context: {e}")
                 project_context = ""
             
             system_prompt = get_system_prompt(
@@ -594,9 +595,27 @@ Now provide a natural, helpful response based on the tool results above. Be conc
         try:
             from core.development_workflows import DevelopmentWorkflow
             
-            content_length = int(self.headers['Content-Length'])
+            content_length = self.headers.get('Content-Length', 0)
+            if not content_length:
+                self.send_json_error("Missing Content-Length header")
+                return
+            
+            try:
+                content_length = int(content_length)
+            except ValueError:
+                self.send_json_error("Invalid Content-Length header")
+                return
+            
+            if content_length == 0:
+                self.send_json_error("Empty request body")
+                return
+            
             body = self.rfile.read(content_length)
-            data = json.loads(body)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError as e:
+                self.send_json_error(f"Invalid JSON: {e}")
+                return
             
             workflow_name = data.get('workflow', '')
             params = data.get('params', {})
@@ -632,10 +651,29 @@ Now provide a natural, helpful response based on the tool results above. Be conc
         """Get development context for a specific file"""
         try:
             from core.project_context import ProjectContextAnalyzer
+            from pathlib import Path
             
-            content_length = int(self.headers['Content-Length'])
+            content_length = self.headers.get('Content-Length', 0)
+            if not content_length:
+                self.send_json_error("Missing Content-Length header")
+                return
+            
+            try:
+                content_length = int(content_length)
+            except ValueError:
+                self.send_json_error("Invalid Content-Length header")
+                return
+            
+            if content_length == 0:
+                self.send_json_error("Empty request body")
+                return
+            
             body = self.rfile.read(content_length)
-            data = json.loads(body)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError as e:
+                self.send_json_error(f"Invalid JSON: {e}")
+                return
             
             file_path = data.get('file_path', '')
             
@@ -643,8 +681,18 @@ Now provide a natural, helpful response based on the tool results above. Be conc
                 self.send_json_error("No file_path specified")
                 return
             
+            # Normalize and validate the requested file path to prevent path traversal
+            project_root_resolved = PROJECT_ROOT.resolve()
+            candidate_path = (project_root_resolved / file_path).resolve()
+            try:
+                # Ensure the candidate path is inside the project root
+                safe_relative_path = candidate_path.relative_to(project_root_resolved)
+            except ValueError:
+                self.send_json_error("Invalid file_path: must be within project directory")
+                return
+            
             analyzer = ProjectContextAnalyzer(str(PROJECT_ROOT))
-            file_context = analyzer.get_file_context(file_path)
+            file_context = analyzer.get_file_context(str(safe_relative_path))
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

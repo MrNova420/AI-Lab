@@ -11,7 +11,7 @@ def get_system_prompt(
     commander_mode=False, 
     web_search_mode=False, 
     tools_description="",
-    development_mode=True,
+    development_mode=False,
     project_context=None,
     use_simple_mode=True  # Use ultra-simple prompts for local models (RECOMMENDED)
 ):
@@ -24,7 +24,9 @@ def get_system_prompt(
     
     # ULTRA SIMPLE MODE - Best for local models (default)
     # Works great with Mistral 7B, Llama 2, CodeLlama, etc.
-    if use_simple_mode and (commander_mode or development_mode):
+    # Do not short-circuit web_search_mode-only calls into ultra simple mode,
+    # so that web-search/tooling instructions are not bypassed.
+    if use_simple_mode and (commander_mode or (development_mode and not web_search_mode)):
         try:
             from core.ultra_simple_protocol import get_ultra_simple_prompt
             return get_ultra_simple_prompt(commander_mode=commander_mode)

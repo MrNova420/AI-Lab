@@ -130,7 +130,7 @@ AI: "Here's what's in test.py: [shows content]"
 Example 3:
 User: "Help me with the project in /home/bob/code/myapp"
 AI: <TOOLS>change_directory(path="/home/bob/code/myapp")</TOOLS>
-AI: <TOOLS>list_files(directory="/home/bob/code/myapp")</TOOLS>
+AI: <TOOLS>list_files(path="/home/bob/code/myapp")</TOOLS>
 AI: "I see your project. What would you like help with?"
 
 Example 4:

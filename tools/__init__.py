@@ -258,7 +258,7 @@ TOOLS = {
             "function": "get_current_directory",
             "description": "📍 GET CWD: Get current working directory.",
             "params": {},
-            "requires_commander": True,
+            "requires_commander": False,
             "requires_verification": False
         },
         "change_directory": {

@@ -63,8 +63,11 @@ header "Step 1/6: Checking System Requirements"
 
 # Check Python
 if command -v python3 &> /dev/null; then
-    PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-    if (( $(echo "$PYTHON_VERSION >= 3.11" | bc -l) )); then
+    PYTHON_VERSION_INFO=$(python3 -c "import sys; print(f'{sys.version_info.major} {sys.version_info.minor}')")
+    PYTHON_MAJOR=$(echo "$PYTHON_VERSION_INFO" | cut -d' ' -f1)
+    PYTHON_MINOR=$(echo "$PYTHON_VERSION_INFO" | cut -d' ' -f2)
+    PYTHON_VERSION="${PYTHON_MAJOR}.${PYTHON_MINOR}"
+    if [ "$PYTHON_MAJOR" -gt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 11 ]; }; then
         log "Python $PYTHON_VERSION found (✓ >= 3.11 required)"
     else
         error "Python $PYTHON_VERSION found (✗ >= 3.11 required)"

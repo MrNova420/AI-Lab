@@ -78,8 +78,8 @@ def test_git_tools():
         result = git_status(repo_path)
         print(f"   ✓ Success: {result.get('success', False)}")
         if result.get('success'):
-            print(f"   ✓ Modified: {len(result.get('modified', []))}")
-            print(f"   ✓ Untracked: {len(result.get('untracked', []))}")
+            print(f"   ✓ Modified: {len(result.get('modified_files', []))}")
+            print(f"   ✓ Untracked: {len(result.get('untracked_files', []))}")
         
         # Test git_log
         print("\n3. Testing git_log...")

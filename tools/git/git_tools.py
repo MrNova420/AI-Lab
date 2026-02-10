@@ -2,6 +2,11 @@
 
 from typing import Dict, Any, Optional
 
+try:
+    import git
+except ImportError:
+    git = None
+
 
 def git_status(repo_path: str) -> Dict[str, Any]:
     """
@@ -13,9 +18,14 @@ def git_status(repo_path: str) -> Dict[str, Any]:
     Returns:
         Dictionary with repository status including modified, staged, and untracked files
     """
+    if git is None:
+        return {
+            "success": False,
+            "repo_path": repo_path,
+            "error": "GitPython not installed. Install with: pip install gitpython"
+        }
+    
     try:
-        import git
-        
         # Open repository
         repo = git.Repo(repo_path)
         

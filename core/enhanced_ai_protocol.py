@@ -70,7 +70,7 @@ def get_prompt_for_1b_model(commander_mode: bool = False) -> str:
 
 def get_prompt_for_3b_model(commander_mode: bool = False) -> str:
     """Get prompt optimized for 3B models (Phi-2, StableLM 3B)"""
-    return get_minimal_protocol(commander_mode)
+    return get_minimal_prompt(commander_mode)
 
 
 def get_prompt_for_7b_model(commander_mode: bool = False, grok_search: bool = False) -> str:

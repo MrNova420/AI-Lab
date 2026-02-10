@@ -82,7 +82,7 @@ def create_file_with_content(path: str, content: str, overwrite: bool = False) -
                 "error": "File already exists - set overwrite=True to replace"
             }
         
-        with open(path_obj, 'w') as f:
+        with open(path_obj, 'w', encoding='utf-8') as f:
             f.write(content)
         
         return {
@@ -145,7 +145,7 @@ def create_project_structure(base_path: str, structure: Dict[str, Any]) -> Dict[
             try:
                 full_path = base / file_path
                 full_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(full_path, 'w') as f:
+                with open(full_path, 'w', encoding='utf-8') as f:
                     f.write(content)
                 results["created_files"].append(str(full_path))
             except Exception as e:
