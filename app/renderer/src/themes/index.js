@@ -7,6 +7,9 @@ import darkTheme from './dark.js';
 import lightTheme from './light.js';
 import highContrastTheme from './highContrast.js';
 import draculaTheme from './dracula.js';
+import nordTheme from './nord.js';
+import githubDarkTheme from './githubDark.js';
+import monokaiTheme from './monokai.js';
 
 // Theme registry
 export const themes = {
@@ -14,6 +17,9 @@ export const themes = {
   light: lightTheme,
   'high-contrast': highContrastTheme,
   dracula: draculaTheme,
+  nord: nordTheme,
+  'github-dark': githubDarkTheme,
+  monokai: monokaiTheme,
 };
 
 // Default theme
