@@ -43,10 +43,6 @@ const ContextViewer = ({ messages, onPinMessage, onUnpinMessage, pinnedMessages 
     return '#f44336'; // Red
   };
 
-  const isPinned = (messageId) => {
-    return pinnedMessages.includes(messageId);
-  };
-
   return (
     <div style={{
       backgroundColor: '#1a1a2e',

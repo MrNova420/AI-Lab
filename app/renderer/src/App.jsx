@@ -38,7 +38,7 @@ function AppContent() {
       // TODO: Implement save session
       console.log('Save session triggered');
     },
-    toggleSidebar: () => setSidebarCollapsed(!sidebarCollapsed),
+    toggleSidebar: () => setSidebarCollapsed(prev => !prev),
     openSettings: () => navigate('/settings'),
     toggleCommander: () => {
       // TODO: Implement commander mode toggle
@@ -97,7 +97,8 @@ function AppContent() {
         navigate('/settings');
         break;
       case 'toggleTheme':
-        setShowShortcutHelp(true);
+        // Theme toggling not yet implemented - user can change in Settings
+        console.log('Toggle theme command is not yet implemented');
         break;
       case 'toggleCommander':
         console.log('Toggle commander');

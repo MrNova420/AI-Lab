@@ -3,7 +3,6 @@
  * Provides keyboard shortcuts across the entire application
  */
 
-import { useEffect, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
 export const useGlobalShortcuts = (handlers) => {

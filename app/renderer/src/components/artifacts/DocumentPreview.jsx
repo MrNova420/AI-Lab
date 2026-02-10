@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { motion } from 'framer-motion';
 
 const DocumentPreview = ({ artifact, isEditing, onUpdate }) => {
   const [content, setContent] = useState(artifact.content);

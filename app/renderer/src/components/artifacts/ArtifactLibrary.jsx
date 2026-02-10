@@ -15,7 +15,7 @@ const ArtifactLibrary = ({ onClose }) => {
   const [filterType, setFilterType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('updated');
-  const [selectedArtifact, setSelectedArtifact] = useState(null);
+  const [, setSelectedArtifact] = useState(null); // Reserved for future use
   const [stats, setStats] = useState(null);
   
   useEffect(() => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { trackToolsFromResponse } from '../utils/toolTracking';
 import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
 import sessionManager from '../utils/sessionManager';
-import artifactManager, { ArtifactTypes } from '../utils/artifactManager';
+import artifactManager from '../utils/artifactManager';
 import branchManager from '../utils/branchManager';
 import ArtifactLibrary from '../components/artifacts/ArtifactLibrary';
 import BranchNavigator from '../components/branching/BranchNavigator';
@@ -159,27 +159,27 @@ function Chat({ messages, setMessages, input, setInput }) {
     setArtifactStats(stats);
   }, [showArtifactLibrary]);
   
-  // Artifact functions
-  const handleCreateArtifact = (type) => {
+  // Artifact functions (ready for future use when UI components need them)
+  const handleCreateArtifact = (type) => { // eslint-disable-line no-unused-vars
     // For now, just open the library - user can create from there
     setShowArtifactLibrary(true);
   };
   
-  const handleUpdateArtifact = (id, update) => {
+  const handleUpdateArtifact = (id, update) => { // eslint-disable-line no-unused-vars
     artifactManager.updateArtifact(id, update);
     // Refresh stats
     const stats = artifactManager.getStatistics();
     setArtifactStats(stats);
   };
   
-  const handleDeleteArtifact = (id) => {
+  const handleDeleteArtifact = (id) => { // eslint-disable-line no-unused-vars
     artifactManager.deleteArtifact(id);
     // Refresh stats
     const stats = artifactManager.getStatistics();
     setArtifactStats(stats);
   };
   
-  const handleExportArtifact = (artifact) => {
+  const handleExportArtifact = (artifact) => { // eslint-disable-line no-unused-vars
     const exported = artifactManager.exportArtifact(artifact.id, 'json');
     const blob = new Blob([exported], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -187,6 +187,12 @@ function Chat({ messages, setMessages, input, setInput }) {
     a.href = url;
     a.download = `${artifact.title}.json`;
     a.click();
+    
+    // Clean up to prevent memory leak
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
   };
   
   // Branch functions
@@ -199,7 +205,7 @@ function Chat({ messages, setMessages, input, setInput }) {
     setShowBranchNavigator(false);
   };
   
-  const handleCreateBranch = () => {
+  const handleCreateBranch = () => { // eslint-disable-line no-unused-vars
     setShowBranchNavigator(true);
   };
   

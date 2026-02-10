@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
-import { motion } from 'framer-motion';
 
 const CodePreview = ({ artifact, isEditing, onUpdate }) => {
   const [code, setCode] = useState(artifact.content);

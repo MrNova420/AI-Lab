@@ -100,24 +100,8 @@ export const loadSavedTheme = () => {
   return applyTheme(savedTheme || defaultTheme);
 };
 
-// React hook for theme management
-export const useTheme = () => {
-  const [currentTheme, setCurrentTheme] = React.useState(() => {
-    return localStorage.getItem('ai-lab-theme') || defaultTheme;
-  });
-  
-  const changeTheme = (themeId) => {
-    applyTheme(themeId);
-    setCurrentTheme(themeId);
-  };
-  
-  return {
-    currentTheme,
-    theme: getTheme(currentTheme),
-    changeTheme,
-    availableThemes: getAllThemes(),
-  };
-};
+// Note: useTheme hook is provided by contexts/ThemeContext.jsx
+// This duplicate has been removed to avoid confusion
 
 export default {
   themes,

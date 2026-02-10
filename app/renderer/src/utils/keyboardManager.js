@@ -3,7 +3,7 @@
  * Comprehensive keyboard navigation and command system
  */
 
-import { useHotkeys } from 'react-hotkeys-hook';
+// Note: useHotkeys import removed - use hooks/useGlobalShortcuts.js for hook-based registration
 
 // Shortcut categories and definitions
 export const shortcuts = {
@@ -99,24 +99,10 @@ export const commands = [
   { id: 'documentation', label: 'Documentation', category: 'Help', keywords: ['docs', 'documentation', 'help'] },
 ];
 
-// Keyboard shortcuts hook
-export const useKeyboardShortcuts = (handlers) => {
-  // Flatten all shortcuts
-  const allShortcuts = Object.values(shortcuts).reduce((acc, category) => {
-    return { ...acc, ...category };
-  }, {});
-  
-  // Register each shortcut
-  Object.entries(allShortcuts).forEach(([key, shortcut]) => {
-    const handler = handlers[shortcut.action];
-    if (handler) {
-      useHotkeys(shortcut.keys, (e) => {
-        e.preventDefault();
-        handler(shortcut.params);
-      }, [handler]);
-    }
-  });
-};
+// Note: The useKeyboardShortcuts hook has been removed from here
+// because it violated the Rules of Hooks (calling hooks in a loop).
+// Use the useGlobalShortcuts hook from hooks/useGlobalShortcuts.js instead,
+// which properly registers shortcuts at the component level.
 
 // Get all shortcuts as flat array
 export const getAllShortcuts = () => {
@@ -156,7 +142,6 @@ export const searchCommands = (query) => {
 export default {
   shortcuts,
   commands,
-  useKeyboardShortcuts,
   getAllShortcuts,
   searchShortcuts,
   searchCommands

@@ -132,12 +132,15 @@ class BranchManager {
   
   // Helper to find branch in tree
   findBranchInTree(tree, branchId) {
-    for (const branch of Object.values(tree)) {
+    // Handle both object with branches and array of branches
+    const branches = Array.isArray(tree) ? tree : Object.values(tree);
+    
+    for (const branch of branches) {
       if (branch.id === branchId) {
         return branch;
       }
-      if (branch.children) {
-        const found = this.findBranchInTree({ children: branch.children }, branchId);
+      if (branch.children && branch.children.length > 0) {
+        const found = this.findBranchInTree(branch.children, branchId);
         if (found) return found;
       }
     }
