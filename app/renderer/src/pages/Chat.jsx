@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { trackToolsFromResponse } from '../utils/toolTracking';
 import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
 import sessionManager from '../utils/sessionManager';
+import artifactManager, { ArtifactTypes } from '../utils/artifactManager';
+import branchManager from '../utils/branchManager';
+import ArtifactLibrary from '../components/artifacts/ArtifactLibrary';
+import BranchNavigator from '../components/branching/BranchNavigator';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +17,12 @@ function Chat({ messages, setMessages, input, setInput }) {
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef(null);
   const sessionInitialized = useRef(false);
+  
+  // v1 Beta features state
+  const [showArtifactLibrary, setShowArtifactLibrary] = useState(false);
+  const [showBranchNavigator, setShowBranchNavigator] = useState(false);
+  const [currentBranch, setCurrentBranch] = useState('main');
+  const [artifactStats, setArtifactStats] = useState({ total: 0 });
 
   // Initialize session on mount
   useEffect(() => {
@@ -136,6 +146,56 @@ function Chat({ messages, setMessages, input, setInput }) {
     } catch (error) {
       console.error('Failed to load sessions list:', error);
     }
+  };
+  
+  // Load artifact stats on mount
+  useEffect(() => {
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  }, [showArtifactLibrary]);
+  
+  // Artifact functions
+  const handleCreateArtifact = (type) => {
+    // For now, just open the library - user can create from there
+    setShowArtifactLibrary(true);
+  };
+  
+  const handleUpdateArtifact = (id, update) => {
+    artifactManager.updateArtifact(id, update);
+    // Refresh stats
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  };
+  
+  const handleDeleteArtifact = (id) => {
+    artifactManager.deleteArtifact(id);
+    // Refresh stats
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  };
+  
+  const handleExportArtifact = (artifact) => {
+    const exported = artifactManager.exportArtifact(artifact.id, 'json');
+    const blob = new Blob([exported], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${artifact.title}.json`;
+    a.click();
+  };
+  
+  // Branch functions
+  const handleSwitchBranch = (branchId) => {
+    setCurrentBranch(branchId);
+    const branch = branchManager.getBranch(branchId);
+    if (branch) {
+      setMessages(branch.messages);
+    }
+    setShowBranchNavigator(false);
+  };
+  
+  const handleCreateBranch = () => {
+    setShowBranchNavigator(true);
   };
 
   const deleteSessionFromList = async (sessionId, event) => {
@@ -312,6 +372,47 @@ function Chat({ messages, setMessages, input, setInput }) {
         
         {/* Session and Mode Controls */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* v1 Beta Features */}
+          <button
+            onClick={() => setShowArtifactLibrary(true)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#9c27b0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="View artifacts library"
+          >
+            📦 Artifacts {artifactStats.total > 0 && `(${artifactStats.total})`}
+          </button>
+          
+          <button
+            onClick={() => setShowBranchNavigator(true)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Manage conversation branches"
+          >
+            🌿 Branch: {currentBranch === 'main' ? 'Main' : branchManager.getBranch(currentBranch)?.name || 'Unknown'}
+          </button>
+          
           {/* Session Controls */}
           <button
             onClick={startNewSession}
@@ -721,6 +822,21 @@ function Chat({ messages, setMessages, input, setInput }) {
           animation: blink 1s infinite;
         }
       `}</style>
+      
+      {/* v1 Beta Modals */}
+      {showArtifactLibrary && (
+        <ArtifactLibrary
+          onClose={() => setShowArtifactLibrary(false)}
+        />
+      )}
+      
+      {showBranchNavigator && (
+        <BranchNavigator
+          currentBranch={currentBranch}
+          onSwitchBranch={handleSwitchBranch}
+          onClose={() => setShowBranchNavigator(false)}
+        />
+      )}
     </div>
   );
 }
