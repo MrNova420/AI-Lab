@@ -344,7 +344,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 web_search_mode=web_mode,
                 tools_description=tools_desc,
                 development_mode=commander_mode,  # Commander = Development mode
-                project_context=project_context
+                project_context=project_context,
+                use_simple_mode=True  # Use simple prompts for better local model compatibility
             )
             
             # Build chat history with system prompt

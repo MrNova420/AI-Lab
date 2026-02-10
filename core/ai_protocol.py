@@ -2,6 +2,7 @@
 NovaForge AI Protocol
 Defines how the AI should behave and use tools intelligently
 Enhanced for full development assistance (Copilot-like capabilities)
+Optimized for both cloud and local models
 """
 
 from typing import Optional
@@ -11,17 +12,26 @@ def get_system_prompt(
     web_search_mode=False, 
     tools_description="",
     development_mode=True,
-    project_context=None
+    project_context=None,
+    use_simple_mode=True  # NEW: Use simpler prompts for local models
 ):
     """
     Get system prompt based on mode
-    Commander Mode = Full PC access
-    Development Mode = Copilot-like assistance (NEW)
+    Commander Mode = Full PC access + Development assistance
+    Simple Mode = Better for local models (recommended)
     Normal Mode = Safe chat only
     """
     
-    # Use enhanced development protocol if available
-    if development_mode:
+    # Use simple protocol for better local model compatibility
+    if use_simple_mode and (commander_mode or development_mode):
+        from core.simple_protocol import get_simple_development_prompt
+        return get_simple_development_prompt(
+            tools_description=tools_description,
+            commander_mode=commander_mode
+        )
+    
+    # Use enhanced development protocol if available (for larger models)
+    if development_mode and not use_simple_mode:
         try:
             from core.development_protocol import get_development_system_prompt
             return get_development_system_prompt(
