@@ -121,29 +121,45 @@ def test_file_operations():
             test_dir = os.path.join(tmpdir, "testdir")
             
             # Test write
-            from tools.core_tools import write_file
+            from tools.system.files import write_file
             result = write_file(test_file, "Hello AI!")
             if result.get('success'):
                 print(f"   ✅ write_file works")
             
             # Test read
-            from tools.core_tools import read_file
+            from tools.system.files import read_file
             result = read_file(test_file)
             if result.get('success') and result.get('content') == "Hello AI!":
                 print(f"   ✅ read_file works")
             
             # Test create directory
-            from tools.core_tools import create_directory
+            from tools.filesystem.full_access import create_directory
             result = create_directory(test_dir)
             if result.get('success'):
                 print(f"   ✅ create_directory works")
             
             # Test list files
-            from tools.core_tools import list_files
+            from tools.system.files import list_files
             result = list_files(tmpdir)
             if result.get('success'):
                 print(f"   ✅ list_files works")
                 print(f"      Found: {result.get('files', [])}")
+            
+            # Test run_command
+            from tools.system.processes import run_command
+            result = run_command('echo "AI test"')
+            if result.get('success'):
+                print(f"   ✅ run_command works")
+                print(f"      Output: {result.get('output', '').strip()}")
+            
+            # Test search_web
+            import sys
+            sys.path.insert(0, 'tools/web')
+            from simple_search import search_web
+            result = search_web('test query')
+            if result.get('success'):
+                print(f"   ✅ search_web works")
+                print(f"      Message: {result.get('message')}")
         
         return True
         
