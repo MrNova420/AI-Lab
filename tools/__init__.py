@@ -54,6 +54,30 @@ TOOLS = {
             "requires_commander": True,
             "requires_verification": False
         },
+        "smart_open_app": {
+            "module": "tools.system.smart_app_launcher",
+            "function": "smart_open_app",
+            "description": "Intelligently open an app (opens installed app or web version as fallback)",
+            "params": {"app_name": "string", "web_url": "string (optional)"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "get_app_info": {
+            "module": "tools.system.smart_app_launcher",
+            "function": "get_app_info",
+            "description": "Get detailed information about an app (installed status, web availability)",
+            "params": {"app_name": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "list_common_apps": {
+            "module": "tools.system.smart_app_launcher",
+            "function": "list_common_apps",
+            "description": "List commonly used apps with their installation status",
+            "params": {},
+            "requires_commander": False,
+            "requires_verification": False
+        },
         "analyze_system": {
             "module": "tools.system.analyzer",
             "function": "analyze_system",
