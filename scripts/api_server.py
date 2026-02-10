@@ -30,6 +30,10 @@ from core.user_manager import user_manager
 from scripts.smart_parser import parse_tool_declarations, remove_tool_declarations
 from core.ai_protocol import get_system_prompt
 from tools import generate_tools_description
+from core.performance_optimization import (
+    OptimizedProjectContext, OptimizedWorkflowExecutor, 
+    get_cache, get_resource_manager
+)
 
 # Initialize logging and memory
 logging_system = LoggingSystem()
@@ -86,6 +90,12 @@ class APIHandler(BaseHTTPRequestHandler):
         
         if path == '/api/chat':
             self.handle_chat()
+        elif path == '/api/dev/analyze':
+            self.handle_dev_analyze()
+        elif path == '/api/dev/workflow':
+            self.handle_dev_workflow()
+        elif path == '/api/dev/context':
+            self.handle_dev_context()
         elif path == '/api/models/sync':
             self.handle_sync_models()
         elif path == '/api/models/download':
@@ -321,10 +331,22 @@ class APIHandler(BaseHTTPRequestHandler):
             )
             
             # Get system prompt with tools
+            # Enhanced: Commander mode now includes full development capabilities with caching
+            try:
+                # Use optimized project context with caching
+                opt_context = OptimizedProjectContext(str(PROJECT_ROOT))
+                project_context = opt_context.get_ai_context() if commander_mode else ""
+            except Exception as e:
+                logging_system.error(f"Failed to build optimized project context: {e}")
+                project_context = ""
+            
             system_prompt = get_system_prompt(
                 commander_mode=commander_mode,
                 web_search_mode=web_mode,
-                tools_description=tools_desc
+                tools_description=tools_desc,
+                development_mode=commander_mode,  # Commander = Development mode
+                project_context=project_context,
+                use_simple_mode=True  # Use simple prompts for better local model compatibility
             )
             
             # Build chat history with system prompt
@@ -531,6 +553,156 @@ Now provide a natural, helpful response based on the tool results above. Be conc
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_dev_analyze(self):
+        """Analyze project for development context (with caching)"""
+        try:
+            from core.performance_optimization import OptimizedProjectContext
+            
+            opt_context = OptimizedProjectContext(str(PROJECT_ROOT))
+            
+            # Check if force refresh requested
+            content_length = int(self.headers.get('Content-Length', 0))
+            force_refresh = False
+            if content_length > 0:
+                body = self.rfile.read(content_length)
+                data = json.loads(body)
+                force_refresh = data.get('force_refresh', False)
+            
+            context = opt_context.get_context(force_refresh=force_refresh)
+            ai_context = opt_context.get_ai_context(force_refresh=force_refresh)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'context': context,
+                'ai_context': ai_context,
+                'cached': not force_refresh
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_dev_workflow(self):
+        """Execute a development workflow"""
+        try:
+            from core.development_workflows import DevelopmentWorkflow
+            
+            content_length = self.headers.get('Content-Length', 0)
+            if not content_length:
+                self.send_json_error("Missing Content-Length header")
+                return
+            
+            try:
+                content_length = int(content_length)
+            except ValueError:
+                self.send_json_error("Invalid Content-Length header")
+                return
+            
+            if content_length == 0:
+                self.send_json_error("Empty request body")
+                return
+            
+            body = self.rfile.read(content_length)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError as e:
+                self.send_json_error(f"Invalid JSON: {e}")
+                return
+            
+            workflow_name = data.get('workflow', '')
+            params = data.get('params', {})
+            
+            if not workflow_name:
+                self.send_json_error("No workflow specified")
+                return
+            
+            # Create tool executor for workflow
+            tool_executor = ToolExecutor(
+                commander_mode=True,
+                web_search_mode=False
+            )
+            
+            # Execute workflow
+            workflow = DevelopmentWorkflow(tool_executor, str(PROJECT_ROOT))
+            result = workflow.execute_workflow(workflow_name, params)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'result': result
+            }).encode())
+            
+        except Exception as e:
+            self.send_json_error(str(e))
+    
+    def handle_dev_context(self):
+        """Get development context for a specific file"""
+        try:
+            from core.project_context import ProjectContextAnalyzer
+            from pathlib import Path
+            
+            content_length = self.headers.get('Content-Length', 0)
+            if not content_length:
+                self.send_json_error("Missing Content-Length header")
+                return
+            
+            try:
+                content_length = int(content_length)
+            except ValueError:
+                self.send_json_error("Invalid Content-Length header")
+                return
+            
+            if content_length == 0:
+                self.send_json_error("Empty request body")
+                return
+            
+            body = self.rfile.read(content_length)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError as e:
+                self.send_json_error(f"Invalid JSON: {e}")
+                return
+            
+            file_path = data.get('file_path', '')
+            
+            if not file_path:
+                self.send_json_error("No file_path specified")
+                return
+            
+            # Normalize and validate the requested file path to prevent path traversal
+            project_root_resolved = PROJECT_ROOT.resolve()
+            candidate_path = (project_root_resolved / file_path).resolve()
+            try:
+                # Ensure the candidate path is inside the project root
+                safe_relative_path = candidate_path.relative_to(project_root_resolved)
+            except ValueError:
+                self.send_json_error("Invalid file_path: must be within project directory")
+                return
+            
+            analyzer = ProjectContextAnalyzer(str(PROJECT_ROOT))
+            file_context = analyzer.get_file_context(str(safe_relative_path))
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({
+                'success': True,
+                'context': file_context
+            }).encode())
             
         except Exception as e:
             self.send_json_error(str(e))

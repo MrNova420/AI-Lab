@@ -10,6 +10,12 @@ import platform
 def open_url(url):
     """
     Open a URL in the default browser
+    
+    Args:
+        url: The URL to open
+        
+    Returns:
+        Dict with success status and message
     """
     try:
         system = platform.system()
@@ -21,24 +27,52 @@ def open_url(url):
                     if 'microsoft' in f.read().lower():
                         # WSL - use PowerShell to open in Windows browser
                         subprocess.run(['powershell.exe', 'Start-Process', url], check=True)
-                        return f"✅ Opened {url} in Windows browser"
+                        return {
+                            'success': True,
+                            'message': f"Opened {url} in Windows browser",
+                            'url': url,
+                            'method': 'wsl_powershell'
+                        }
             except:
                 pass
             
             # Native Linux
             subprocess.run(['xdg-open', url], check=True)
-            return f"✅ Opened {url} in browser"
+            return {
+                'success': True,
+                'message': f"Opened {url} in browser",
+                'url': url,
+                'method': 'xdg-open'
+            }
             
         elif system == "Darwin":  # macOS
             subprocess.run(['open', url], check=True)
-            return f"✅ Opened {url} in browser"
+            return {
+                'success': True,
+                'message': f"Opened {url} in browser",
+                'url': url,
+                'method': 'macos_open'
+            }
             
         elif system == "Windows":
             subprocess.run(['start', url], shell=True, check=True)
-            return f"✅ Opened {url} in browser"
+            return {
+                'success': True,
+                'message': f"Opened {url} in browser",
+                'url': url,
+                'method': 'windows_start'
+            }
         
         else:
-            return f"❌ Unsupported operating system: {system}"
+            return {
+                'success': False,
+                'error': f"Unsupported operating system: {system}",
+                'url': url
+            }
     
     except Exception as e:
-        return f"❌ Error opening URL: {e}"
+        return {
+            'success': False,
+            'error': f"Error opening URL: {str(e)}",
+            'url': url
+        }

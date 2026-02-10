@@ -54,22 +54,6 @@ TOOLS = {
             "requires_commander": True,
             "requires_verification": False
         },
-        "analyze_system": {
-            "module": "tools.system.analyzer",
-            "function": "analyze_system",
-            "description": "Get comprehensive system information (OS, version, architecture, etc.)",
-            "params": {},
-            "requires_commander": False,
-            "requires_verification": True  # Complex analysis
-        },
-        "check_running": {
-            "module": "tools.system.analyzer",
-            "function": "check_what_is_running",
-            "description": "See what processes are currently running on the system",
-            "params": {},
-            "requires_commander": False,
-            "requires_verification": True  # Complex data
-        },
         "check_app": {
             "module": "tools.system.analyzer",
             "function": "check_if_app_exists",
@@ -241,6 +225,214 @@ TOOLS = {
             "description": "🔎 FIND PROCESS: Search for processes by name (case-insensitive). Returns matching PIDs.",
             "params": {"name": "string"},
             "requires_commander": True,
+            "requires_verification": False
+        }
+    },
+    "filesystem": {
+        "create_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_directory",
+            "description": "📁 CREATE DIRECTORY: Create a directory anywhere on the system. Full PC access like Copilot.",
+            "params": {"path": "string", "parents": "bool"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_file_with_content": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_file_with_content",
+            "description": "📝 CREATE FILE: Create a file with content anywhere on the system. Full PC access.",
+            "params": {"path": "string", "content": "string", "overwrite": "bool"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_structure": {
+            "module": "tools.filesystem.full_access",
+            "function": "create_project_structure",
+            "description": "🏗️ CREATE PROJECT: Create entire project structure from specification. Like Copilot - create full project layouts anywhere.",
+            "params": {"base_path": "string", "structure": "dict"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "get_current_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "get_current_directory",
+            "description": "📍 GET CWD: Get current working directory.",
+            "params": {},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "change_directory": {
+            "module": "tools.filesystem.full_access",
+            "function": "change_directory",
+            "description": "📂 CHANGE DIR: Change current working directory.",
+            "params": {"path": "string"},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_from_template": {
+            "module": "tools.filesystem.project_templates",
+            "function": "create_project_from_template",
+            "description": "🎨 CREATE FROM TEMPLATE: Create complete project from template (python-cli, python-api, nodejs-app, react-app, html-website). Like Copilot - instant project setup!",
+            "params": {"template_name": "string", "project_path": "string"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "list_project_templates": {
+            "module": "tools.filesystem.project_templates",
+            "function": "list_templates",
+            "description": "📋 LIST TEMPLATES: List all available project templates.",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "get_workspace_info": {
+            "module": "core.workspace_manager",
+            "function": "get_workspace_info",
+            "description": "🏠 WORKSPACE INFO: Get info about the default workspace (~/NovaForge/projects). Optional - user can work anywhere!",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        },
+        "create_project_in_workspace": {
+            "module": "core.workspace_manager",
+            "function": "create_project_in_workspace",
+            "description": "⚡ QUICK PROJECT: Create project in default workspace. Convenience function - user can specify full paths elsewhere too!",
+            "params": {"project_name": "string", "template": "string"},
+            "requires_commander": True,
+            "requires_verification": True
+        },
+        "list_workspace_projects": {
+            "module": "core.workspace_manager",
+            "function": "list_workspace_projects",
+            "description": "📂 LIST WORKSPACE: List projects in default workspace ~/NovaForge/projects.",
+            "params": {},
+            "requires_commander": True,
+            "requires_verification": False
+        }
+    },
+    "network": {
+        "ping": {
+            "module": "tools.network.network_tools",
+            "function": "ping",
+            "description": "🌐 PING: Check network connectivity to a host. Returns latency and success status.",
+            "params": {"host": "string", "count": "int"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "network_info": {
+            "module": "tools.network.network_tools",
+            "function": "network_info",
+            "description": "📡 NETWORK INFO: Get network interface information (IP address, hostname, FQDN).",
+            "params": {},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "traceroute": {
+            "module": "tools.network.network_tools",
+            "function": "traceroute",
+            "description": "🗺️ TRACEROUTE: Trace the network path to a host. Shows all hops.",
+            "params": {"host": "string", "max_hops": "int"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "dns_lookup": {
+            "module": "tools.network.network_tools",
+            "function": "dns_lookup",
+            "description": "🔍 DNS LOOKUP: Resolve hostname to IP address(es). Shows aliases and canonical name.",
+            "params": {"hostname": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "check_port": {
+            "module": "tools.network.network_tools",
+            "function": "check_port",
+            "description": "🔌 CHECK PORT: Check if a port is open on a host. Useful for service availability.",
+            "params": {"host": "string", "port": "int", "timeout": "int"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
+    },
+    "git": {
+        "git_status": {
+            "module": "tools.git.git_tools",
+            "function": "git_status",
+            "description": "📊 GIT STATUS: Get repository status (modified, staged, untracked files).",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_log": {
+            "module": "tools.git.git_tools",
+            "function": "git_log",
+            "description": "📜 GIT LOG: Get recent commit history with messages and authors.",
+            "params": {"repo_path": "string", "max_count": "int"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_diff": {
+            "module": "tools.git.git_tools",
+            "function": "git_diff",
+            "description": "🔍 GIT DIFF: Show changes in repository (unstaged and staged diffs).",
+            "params": {"repo_path": "string", "file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "git_branch_list": {
+            "module": "tools.git.git_tools",
+            "function": "git_branch_list",
+            "description": "🌳 GIT BRANCHES: List all branches in repository (local and remote).",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "git_current_branch": {
+            "module": "tools.git.git_tools",
+            "function": "git_current_branch",
+            "description": "🎯 CURRENT BRANCH: Get current branch name and tracking information.",
+            "params": {"repo_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        }
+    },
+    "code": {
+        "analyze_file": {
+            "module": "tools.code.code_tools",
+            "function": "analyze_file",
+            "description": "🔬 ANALYZE FILE: Analyze code file structure (lines, functions, classes, complexity).",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "find_todos": {
+            "module": "tools.code.code_tools",
+            "function": "find_todos",
+            "description": "📝 FIND TODOS: Find TODO/FIXME/HACK comments in code files.",
+            "params": {"directory": "string"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "count_lines": {
+            "module": "tools.code.code_tools",
+            "function": "count_lines",
+            "description": "📊 COUNT LINES: Count lines of code by file type in a directory.",
+            "params": {"directory": "string", "extensions": "list"},
+            "requires_commander": False,
+            "requires_verification": True
+        },
+        "find_imports": {
+            "module": "tools.code.code_tools",
+            "function": "find_imports",
+            "description": "📦 FIND IMPORTS: Extract import statements from Python files.",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "check_syntax": {
+            "module": "tools.code.code_tools",
+            "function": "check_syntax",
+            "description": "✅ CHECK SYNTAX: Validate Python syntax without executing code.",
+            "params": {"file_path": "string"},
+            "requires_commander": False,
             "requires_verification": False
         }
     }

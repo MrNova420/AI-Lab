@@ -3,12 +3,13 @@ aiohttp
 beautifulsoup4
 lxml
 prompt_toolkit
-pyaudio
-sounddevice
+# pyaudio - optional, for voice (use web audio instead)
+# sounddevice - optional, for voice (use web audio instead)
 numpy
 scipy
 filelock
 psutil
+gitpython
 pytest
 requests-mock
 pytest-cov
