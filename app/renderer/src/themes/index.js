@@ -101,7 +101,8 @@ export const loadSavedTheme = () => {
 };
 
 // Note: useTheme hook is provided by contexts/ThemeContext.jsx
-// This duplicate has been removed to avoid confusion
+// Import it here to re-export for convenience
+export { useTheme } from '../contexts/ThemeContext';
 
 export default {
   themes,
@@ -110,6 +111,5 @@ export default {
   getThemeIds,
   applyTheme,
   loadSavedTheme,
-  useTheme,
   defaultTheme,
 };

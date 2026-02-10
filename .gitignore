@@ -23,6 +23,9 @@ models/*
 # Exports
 exports/
 
+# Backups (temporary/local files)
+backups/
+
 # Memory & Sessions (user-specific data)
 memory/sessions/
 memory/vector_db/
