@@ -58,10 +58,6 @@ function AppContent() {
     }
   });
   
-  // PERSIST CHAT STATE AT APP LEVEL
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  
   // Load config on mount and poll for updates
   useEffect(() => {
     const loadConfig = async () => {
