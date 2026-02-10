@@ -7,6 +7,7 @@ import branchManager from '../utils/branchManager';
 import ArtifactLibrary from '../components/artifacts/ArtifactLibrary';
 import BranchNavigator from '../components/branching/BranchNavigator';
 import CodeBlock from '../components/ui/CodeBlock';
+import ContextViewer from '../components/ui/ContextViewer';
 import { parseCodeBlocks } from '../utils/codeBlockParser';
 
 function Chat({ messages, setMessages, input, setInput }) {
@@ -25,6 +26,8 @@ function Chat({ messages, setMessages, input, setInput }) {
   const [showBranchNavigator, setShowBranchNavigator] = useState(false);
   const [currentBranch, setCurrentBranch] = useState('main');
   const [artifactStats, setArtifactStats] = useState({ total: 0 });
+  const [showContextViewer, setShowContextViewer] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
 
   // Initialize session on mount
   useEffect(() => {
@@ -198,6 +201,17 @@ function Chat({ messages, setMessages, input, setInput }) {
   
   const handleCreateBranch = () => {
     setShowBranchNavigator(true);
+  };
+  
+  // Context management functions
+  const handlePinMessage = (messageId) => {
+    if (!pinnedMessages.includes(messageId)) {
+      setPinnedMessages([...pinnedMessages, messageId]);
+    }
+  };
+  
+  const handleUnpinMessage = (messageId) => {
+    setPinnedMessages(pinnedMessages.filter(id => id !== messageId));
   };
 
   const deleteSessionFromList = async (sessionId, event) => {
@@ -375,6 +389,26 @@ function Chat({ messages, setMessages, input, setInput }) {
         {/* Session and Mode Controls */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* v1 Beta Features */}
+          <button
+            onClick={() => setShowContextViewer(!showContextViewer)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: showContextViewer ? '#2196F3' : '#1976D2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title={showContextViewer ? 'Hide context viewer' : 'Show context viewer'}
+          >
+            🧠 Context
+          </button>
+          
           <button
             onClick={() => setShowArtifactLibrary(true)}
             style={{
@@ -612,6 +646,16 @@ function Chat({ messages, setMessages, input, setInput }) {
         padding: '20px',
         marginBottom: '20px'
       }}>
+        {/* Context Viewer - shown when toggled */}
+        {showContextViewer && (
+          <ContextViewer
+            messages={messages}
+            onPinMessage={handlePinMessage}
+            onUnpinMessage={handleUnpinMessage}
+            pinnedMessages={pinnedMessages}
+          />
+        )}
+        
         {messages.length === 0 && !currentResponse && (
           <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
             <h3>Start a conversation</h3>
