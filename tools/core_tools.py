@@ -145,10 +145,10 @@ CORE_TOOLS = {
     # === WEB (Basic) ===
     "web": {
         "search_web": {
-            "module": "tools.web.search",
+            "module": "tools.web.simple_search",
             "function": "search_web",
             "description": "Search the web for information",
-            "params": {"query": "string"},
+            "params": {"query": "string", "max_results": "number (optional)"},
             "requires_commander": False,
             "requires_verification": False
         },

@@ -77,6 +77,52 @@ def list_processes():
         }
 
 
+
+
+def run_command(command):
+    """
+    Run a shell command and return output
+    
+    Args:
+        command: Shell command to execute
+        
+    Returns:
+        Dict with command output and status
+    """
+    import subprocess
+    
+    try:
+        # Run command and capture output
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30  # 30 second timeout
+        )
+        
+        return {
+            'success': result.returncode == 0,
+            'output': result.stdout,
+            'error': result.stderr if result.stderr else None,
+            'exit_code': result.returncode,
+            'command': command
+        }
+        
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'error': 'Command timed out after 30 seconds',
+            'command': command
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f"Error running command: {str(e)}",
+            'command': command
+        }
+
+
 def process_info(pid):
     """
     Get detailed information about a specific process
@@ -95,7 +141,6 @@ def process_info(pid):
         pid = int(pid)
         proc = psutil.Process(pid)
         
-        # Get process info
         info = {
             'success': True,
             'pid': proc.pid,
