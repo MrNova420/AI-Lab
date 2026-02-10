@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { trackToolsFromResponse } from '../utils/toolTracking';
 import { saveModePreferences, loadModePreferences } from '../utils/statePersistence';
 import sessionManager from '../utils/sessionManager';
+import artifactManager from '../utils/artifactManager';
+import branchManager from '../utils/branchManager';
+import ArtifactLibrary from '../components/artifacts/ArtifactLibrary';
+import BranchNavigator from '../components/branching/BranchNavigator';
+import CodeBlock from '../components/ui/CodeBlock';
+import ContextViewer from '../components/ui/ContextViewer';
+import { parseCodeBlocks } from '../utils/codeBlockParser';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +20,14 @@ function Chat({ messages, setMessages, input, setInput }) {
   const [showSessionList, setShowSessionList] = useState(false);
   const messagesEndRef = useRef(null);
   const sessionInitialized = useRef(false);
+  
+  // v1 Beta features state
+  const [showArtifactLibrary, setShowArtifactLibrary] = useState(false);
+  const [showBranchNavigator, setShowBranchNavigator] = useState(false);
+  const [currentBranch, setCurrentBranch] = useState('main');
+  const [artifactStats, setArtifactStats] = useState({ total: 0 });
+  const [showContextViewer, setShowContextViewer] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
 
   // Initialize session on mount
   useEffect(() => {
@@ -136,6 +151,73 @@ function Chat({ messages, setMessages, input, setInput }) {
     } catch (error) {
       console.error('Failed to load sessions list:', error);
     }
+  };
+  
+  // Load artifact stats on mount
+  useEffect(() => {
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  }, [showArtifactLibrary]);
+  
+  // Artifact functions (ready for future use when UI components need them)
+  const handleCreateArtifact = (type) => { // eslint-disable-line no-unused-vars
+    // For now, just open the library - user can create from there
+    setShowArtifactLibrary(true);
+  };
+  
+  const handleUpdateArtifact = (id, update) => { // eslint-disable-line no-unused-vars
+    artifactManager.updateArtifact(id, update);
+    // Refresh stats
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  };
+  
+  const handleDeleteArtifact = (id) => { // eslint-disable-line no-unused-vars
+    artifactManager.deleteArtifact(id);
+    // Refresh stats
+    const stats = artifactManager.getStatistics();
+    setArtifactStats(stats);
+  };
+  
+  const handleExportArtifact = (artifact) => { // eslint-disable-line no-unused-vars
+    const exported = artifactManager.exportArtifact(artifact.id, 'json');
+    const blob = new Blob([exported], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${artifact.title}.json`;
+    a.click();
+    
+    // Clean up to prevent memory leak
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+  };
+  
+  // Branch functions
+  const handleSwitchBranch = (branchId) => {
+    setCurrentBranch(branchId);
+    const branch = branchManager.getBranch(branchId);
+    if (branch) {
+      setMessages(branch.messages);
+    }
+    setShowBranchNavigator(false);
+  };
+  
+  const handleCreateBranch = () => { // eslint-disable-line no-unused-vars
+    setShowBranchNavigator(true);
+  };
+  
+  // Context management functions
+  const handlePinMessage = (messageId) => {
+    if (!pinnedMessages.includes(messageId)) {
+      setPinnedMessages([...pinnedMessages, messageId]);
+    }
+  };
+  
+  const handleUnpinMessage = (messageId) => {
+    setPinnedMessages(pinnedMessages.filter(id => id !== messageId));
   };
 
   const deleteSessionFromList = async (sessionId, event) => {
@@ -312,6 +394,67 @@ function Chat({ messages, setMessages, input, setInput }) {
         
         {/* Session and Mode Controls */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* v1 Beta Features */}
+          <button
+            onClick={() => setShowContextViewer(!showContextViewer)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: showContextViewer ? '#2196F3' : '#1976D2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title={showContextViewer ? 'Hide context viewer' : 'Show context viewer'}
+          >
+            🧠 Context
+          </button>
+          
+          <button
+            onClick={() => setShowArtifactLibrary(true)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#9c27b0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="View artifacts library"
+          >
+            📦 Artifacts {artifactStats.total > 0 && `(${artifactStats.total})`}
+          </button>
+          
+          <button
+            onClick={() => setShowBranchNavigator(true)}
+            style={{
+              padding: '8px 14px',
+              backgroundColor: '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Manage conversation branches"
+          >
+            🌿 Branch: {currentBranch === 'main' ? 'Main' : branchManager.getBranch(currentBranch)?.name || 'Unknown'}
+          </button>
+          
           {/* Session Controls */}
           <button
             onClick={startNewSession}
@@ -509,6 +652,16 @@ function Chat({ messages, setMessages, input, setInput }) {
         padding: '20px',
         marginBottom: '20px'
       }}>
+        {/* Context Viewer - shown when toggled */}
+        {showContextViewer && (
+          <ContextViewer
+            messages={messages}
+            onPinMessage={handlePinMessage}
+            onUnpinMessage={handleUnpinMessage}
+            pinnedMessages={pinnedMessages}
+          />
+        )}
+        
         {messages.length === 0 && !currentResponse && (
           <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
             <h3>Start a conversation</h3>
@@ -608,7 +761,20 @@ function Chat({ messages, setMessages, input, setInput }) {
                 📋 Copy
               </button>
             </div>
-            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              {parseCodeBlocks(msg.content).map((part, partIdx) => (
+                part.type === 'code' ? (
+                  <CodeBlock
+                    key={partIdx}
+                    code={part.content}
+                    language={part.language}
+                    messageId={`${idx}-${partIdx}`}
+                  />
+                ) : (
+                  <span key={partIdx}>{part.content}</span>
+                )
+              ))}
+            </div>
           </div>
         ))}
 
@@ -721,6 +887,21 @@ function Chat({ messages, setMessages, input, setInput }) {
           animation: blink 1s infinite;
         }
       `}</style>
+      
+      {/* v1 Beta Modals */}
+      {showArtifactLibrary && (
+        <ArtifactLibrary
+          onClose={() => setShowArtifactLibrary(false)}
+        />
+      )}
+      
+      {showBranchNavigator && (
+        <BranchNavigator
+          currentBranch={currentBranch}
+          onSwitchBranch={handleSwitchBranch}
+          onClose={() => setShowBranchNavigator(false)}
+        />
+      )}
     </div>
   );
 }

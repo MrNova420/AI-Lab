@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { Home, MessageSquare, Mic, Download, FolderOpen, Settings } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Models from './pages/Models';
@@ -8,13 +8,55 @@ import Voice from './pages/Voice';
 import Projects from './pages/Projects';
 import SettingsPage from './pages/Settings';
 import Sessions from './pages/Sessions';
+import { ThemeProvider } from './contexts/ThemeContext';
+import CommandPalette from './components/ui/CommandPalette';
+import ShortcutHelp from './components/ui/ShortcutHelp';
+import useGlobalShortcuts from './hooks/useGlobalShortcuts';
 
-function App() {
+function AppContent() {
+  const navigate = useNavigate();
   const [config, setConfig] = useState({ project_name: 'default', active_model_tag: null });
   
   // PERSIST CHAT STATE AT APP LEVEL
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  
+  // UI state for modals
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Global keyboard shortcuts
+  useGlobalShortcuts({
+    openCommandPalette: () => setShowCommandPalette(true),
+    showShortcuts: () => setShowShortcutHelp(true),
+    newChat: () => {
+      setChatMessages([]);
+      navigate('/chat');
+    },
+    saveSession: () => {
+      // TODO: Implement save session
+      console.log('Save session triggered');
+    },
+    toggleSidebar: () => setSidebarCollapsed(prev => !prev),
+    openSettings: () => navigate('/settings'),
+    toggleCommander: () => {
+      // TODO: Implement commander mode toggle
+      console.log('Toggle commander mode');
+    },
+    toggleWebSearch: () => {
+      // TODO: Implement web search toggle
+      console.log('Toggle web search');
+    },
+    createBranch: () => {
+      // TODO: Implement branch creation
+      console.log('Create branch');
+    },
+    createArtifact: () => {
+      // TODO: Implement artifact creation
+      console.log('Create artifact');
+    }
+  });
   
   // Load config on mount and poll for updates
   useEffect(() => {
@@ -37,6 +79,38 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  
+  // Execute command from command palette
+  const executeCommand = (commandId) => {
+    switch (commandId) {
+      case 'newChat':
+        setChatMessages([]);
+        navigate('/chat');
+        break;
+      case 'openSession':
+        navigate('/sessions');
+        break;
+      case 'saveSession':
+        console.log('Save session');
+        break;
+      case 'openSettings':
+        navigate('/settings');
+        break;
+      case 'toggleTheme':
+        // Theme toggling not yet implemented - user can change in Settings
+        console.log('Toggle theme command is not yet implemented');
+        break;
+      case 'toggleCommander':
+        console.log('Toggle commander');
+        break;
+      case 'toggleWebSearch':
+        console.log('Toggle web search');
+        break;
+      default:
+        console.log('Unknown command:', commandId);
+    }
+  };
+
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/models', icon: Download, label: 'Models' },
@@ -48,9 +122,9 @@ function App() {
   ];
 
   return (
-    <BrowserRouter>
+    <>
       <div className="app-container">
-        <aside className="sidebar">
+        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="sidebar-header">
             <h1 className="logo">⚡ AI-Lab</h1>
           </div>
@@ -92,7 +166,28 @@ function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+      
+      {/* Global Modals */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onExecuteCommand={executeCommand}
+      />
+      <ShortcutHelp
+        isOpen={showShortcutHelp}
+        onClose={() => setShowShortcutHelp(false)}
+      />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
