@@ -147,8 +147,24 @@ CORE_TOOLS = {
         "search_web": {
             "module": "tools.web.simple_search",
             "function": "search_web",
-            "description": "Search the web for information",
+            "description": "Search the web for information (basic)",
             "params": {"query": "string", "max_results": "number (optional)"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "grok_search": {
+            "module": "tools.web.grok_search",
+            "function": "grok_search",
+            "description": "Grok-inspired deep search: multi-source, verified, with citations (advanced)",
+            "params": {"query": "string", "deep_mode": "bool (optional)", "verify": "bool (optional)", "max_results": "number (optional)"},
+            "requires_commander": False,
+            "requires_verification": False
+        },
+        "quick_search": {
+            "module": "tools.web.grok_search",
+            "function": "quick_search",
+            "description": "Quick multi-source search without deep analysis",
+            "params": {"query": "string"},
             "requires_commander": False,
             "requires_verification": False
         },
