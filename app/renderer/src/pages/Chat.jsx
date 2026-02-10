@@ -6,6 +6,8 @@ import artifactManager, { ArtifactTypes } from '../utils/artifactManager';
 import branchManager from '../utils/branchManager';
 import ArtifactLibrary from '../components/artifacts/ArtifactLibrary';
 import BranchNavigator from '../components/branching/BranchNavigator';
+import CodeBlock from '../components/ui/CodeBlock';
+import { parseCodeBlocks } from '../utils/codeBlockParser';
 
 function Chat({ messages, setMessages, input, setInput }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -709,7 +711,20 @@ function Chat({ messages, setMessages, input, setInput }) {
                 📋 Copy
               </button>
             </div>
-            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              {parseCodeBlocks(msg.content).map((part, partIdx) => (
+                part.type === 'code' ? (
+                  <CodeBlock
+                    key={partIdx}
+                    code={part.content}
+                    language={part.language}
+                    messageId={`${idx}-${partIdx}`}
+                  />
+                ) : (
+                  <span key={partIdx}>{part.content}</span>
+                )
+              ))}
+            </div>
           </div>
         ))}
 
