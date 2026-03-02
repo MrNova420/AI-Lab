@@ -59,7 +59,7 @@ check_command "wget"
 
 # Optional: Ollama availability (warn only)
 if ! command -v "$OLLAMA_CMD" >/dev/null 2>&1; then
-    log_message "⚠️ Ollama CLI not found. Install it from https://ollama.com/download or run 'sudo snap install ollama' (Linux) so you can download models."
+    log_message "⚠️ Ollama CLI not found. Install it from https://ollama.com/download or run 'curl -fsSL https://ollama.com/install.sh | sh' (Linux) so you can download models."
 else
     log_message "✅ Ollama CLI detected ($(command -v "$OLLAMA_CMD"))."
 fi
